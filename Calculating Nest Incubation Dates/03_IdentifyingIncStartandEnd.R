@@ -107,7 +107,8 @@ for (file in file_paths) {
 ## Data Prep-Consolidate Nesting Data 
 
 #' Read in nest csv 
-nests <- read.csv("Data Management/Csvs/processed data/Nests/nests_22_23_clean.csv")
+nests <- read.csv("Data Management/Csvs/Raw/nests_raw_FEB.csv") %>%
+  dplyr::filter(nestfound == "Y")
 
 #' Format days so that there are two digits per each day
 nests$checkday <- stringr::str_pad(nests$checkday, width = 2, pad = "0")
@@ -126,7 +127,7 @@ nests <- nests %>%tidyr::drop_na()
 #' Format checkdate column as a date object
 #' Checkdate3 is 3 days from the checkdate
 nests$checkdate <- as.Date(nests$checkdate, format = "%Y%m%d")
-nests$checkdate3 <- nests$checkdate + days(4)
+nests$checkdate3 <- nests$checkdate + days(3)
 
 #' 50 days prior to the nest being checked 
 #' Truncate ACC data for each hen 50 days before the check date
@@ -219,6 +220,12 @@ for (i in 1:length(files)) {
         } }
     endI<-min(which(df.prop.15.complete$endI==1))  
     
+    
+    if (is.infinite(endI)) {
+      checkdate <- nest.ID.match$checkdate[n]  
+      endI <- which(df.prop.15.complete$date == checkdate)  
+    }
+    
     nest.attemps.id[[i]][n,]$band<-as.character(df.prop.15$band[n])
     nest.attemps.id[[i]][n,]$nestid<-as.character(df.prop.15$nestid[n])
     nest.attemps.id[[i]][n,]$startI<-as.Date(df.prop.15.complete$date[startI])
@@ -254,8 +261,11 @@ prop_15_complete.df<- do.call(rbind, prop_15_complete_list)
 na.nests.prop15 <- prop_15_complete.df %>%
   dplyr::filter(nestid %in% na_nests$nestid)
 
-#' Filter the dataframe to only include rows where the 'checkdate' is within 7 days of 'endI'
-filtered_nest.attemps.df <- nest.attemps.df %>%
+#' Drop all NA values
+filtered_nest.attemps.all.df <- tidyr::drop_na(nest.attemps.df)
+
+#' Filter the dataframe to only include rows where the 'checkdate' is within 14 days of 'endI'
+filtered_nest.attemps.14.df <- nest.attemps.df %>%
   dplyr::filter(checkdate <= (endI + 14) & checkdate >= endI) 
 
 

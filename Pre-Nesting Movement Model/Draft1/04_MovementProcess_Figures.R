@@ -8,7 +8,7 @@
 #'---
 #'  
 #' **Purpose**: This script creates beta estimate and prediction plots similar to the nest-site selection model
-#' **Last Updated**: 12/4/24
+#' **Last Updated**: 1/20/25
 
 ####################
 ## Load Packages 
@@ -33,7 +33,7 @@ lapply(packages, load_packages)
 ##########################
 ## Data Prep for Plots
 
-load("Data Management/RData/Individual-Specific Movement Process/RData Files/20250112_PreliminaryResults.RData")
+samples_df <- readRDS("Data Management/RData/Pre-Nesting Movement Model/RData Files/Draft2/nimblesamples_df.RDS")
 
 #' Reshape the data into long format for ggplot
 samples_long <- samples_df %>%
@@ -44,12 +44,12 @@ samples_long <- samples_df %>%
 #' View the reshaped data
 head(samples_long)
 
-#' Calculate Bayesian credible intervals
+#' Calculate 90% Bayesian credible intervals
 credible_intervals <- samples_long %>%
   group_by(parameter) %>%
   summarise(
-    lower = quantile(estimate, 0.05),   # 2.5th percentile
-    upper = quantile(estimate, 0.95),   # 97.5th percentile
+    lower = quantile(estimate, 0.05),   
+    upper = quantile(estimate, 0.95), 
     .groups = 'drop'
   )
 
@@ -81,12 +81,14 @@ mean_estimates <- samples_long %>%
     upper = quantile(estimate, 0.95),  # 97.5th percentile (upper bound of credible interval)
     .groups = 'drop'
   ) %>%
-  dplyr::filter(parameter != "Intercept")
+  dplyr::filter(parameter != "Intercept") %>%
+  dplyr::filter(parameter != "Elevation")
 mean_estimates
 
 #' Assign predictors to scales
 mean_estimates <- mean_estimates %>%
-  mutate(Scale = "Landscape-Level")
+  dplyr::mutate(Scale = "Landscape-Level") 
+  
                                           
 
 #' Organize variables into levels to be displayed
@@ -97,7 +99,6 @@ mean_estimates <- mean_estimates %>%
                                               "Mixed Forest",
                                               "Evergreen Forest",
                                               "Deciduous Forest",
-                                              "Elevation",
                                               "Distance to Primary Road",
                                               "Distance to Secondary Road",
                                               "Agriculture"))) 
