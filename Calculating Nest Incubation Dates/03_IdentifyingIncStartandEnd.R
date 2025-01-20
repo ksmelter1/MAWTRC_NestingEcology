@@ -131,7 +131,7 @@ nests$checkdate3 <- nests$checkdate + days(3)
 
 #' 50 days prior to the nest being checked 
 #' Truncate ACC data for each hen 50 days before the check date
-nests$begin<-nests$checkdate - days(50)
+nests$begin<-nests$checkdate3 - days(30)
 
 unique(nests$nestid)
 
@@ -218,7 +218,7 @@ for (i in 1:length(files)) {
                                          df.prop.15.complete$prop.15[m+1] <= 0.8)| 
                                         df.prop.15.complete$prop.15[m] == 1] <- 1
         } }
-    endI<-min(which(df.prop.15.complete$endI==1))  
+    endI<-min(which(df.prop.15.complete$endI==1))
     
     
     if (is.infinite(endI)) {
