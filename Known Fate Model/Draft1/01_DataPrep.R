@@ -10,42 +10,55 @@
 #' **Purpose**: This script uses simulated data to fit a Bayesian known fate model for female wild turkeys in our study
 #' **Key Changes**: This script uses the cloglog link instead of the logit link for modeling daily nest survival
 
-#######################
+#######################################
 ## Load Packages
 
 library(tidyverse)
 library(terra)
 library(mapview)
+library(sf)
 
 
-##############################
+##########################################
 ## Data Prep- Nest-Level Covs
 
 #' Nest start and end date csv
-nests <- read_csv("Data Management/Csvs/processed data/IncubationDates/NestAttempts_allbirds.csv")
+nests <- read_csv("Data Management/Csvs/Processed/IncubationDates/NestAttempts_allbirds.csv")
 nests
 
+#' Rename to NestID
+nests <- nests %>%
+  dplyr::rename("NestID" = nestid)
+
 #' Nest veg csv
-nests.veg <- read_csv("Data Management/Csvs/raw data/nest_vegetation_raw.csv")
+nests.veg <- read_csv("Data Management/Csvs/Processed/Nests/Vegetation Surveys/20250121_CleanedNestsVeg_2022_2023.csv")
 nests.veg
 
 #' Filter nests.veg to only include observations that have the same nestid as nests csv
 nests.veg.filtered <- nests.veg %>%
-  dplyr::rename("nestid"= nestid_v) %>%
-  dplyr::filter(nestid%in% nests$nestid) %>%
-  dplyr::filter(plottype == "Nest")
+  dplyr::filter(NestID%in% nests$NestID) %>%
+  dplyr::filter(PlotType == "Nest")
 
 #' Merge the filtered nests.veg with nests by nestid
-nests <- inner_join(nests, nests.veg.filtered, by = "nestid") 
+nests <- dplyr::right_join(nests, nests.veg.filtered, by = "NestID") 
 
 #' Rename and consolidate columns 
 nests <- nests %>%
-  dplyr::select(nestid, bandid.x, startI, endI, nestfate, averagemaxvo, percwoody, percgrassforb, stemcount, lat_v, long_v) %>%
-  dplyr::rename("Visual Obstruction" = averagemaxvo) %>%
-  dplyr::rename("Percent Woody Vegetation" = percwoody) %>%
-  dplyr::rename("Percent Grass/Forb" = percgrassforb) %>%
-  dplyr::rename("Basal Area" = stemcount) %>%
-  dplyr::rename("BandID" = bandid.x)
+  dplyr::select(NestID, BandID, startI, endI, NestFate, PercWoody, PercGrassForb, AvgMaxVO, StemCount, Lat, Long) %>%
+  dplyr::rename("Visual Obstruction" = AvgMaxVO) %>%
+  dplyr::rename("Percent Woody Vegetation" = PercWoody) %>%
+  dplyr::rename("Percent Grass/Forb" = PercGrassForb) %>%
+  dplyr::rename("Basal Area" = StemCount)
+
+#' Switch coding to UTF-8
+nests <- nests %>% 
+  dplyr::mutate(across(everything(), ~ iconv(., to = "UTF-8")))
+
+#' Change columns to numeric
+nests$`Visual Obstruction` <- as.numeric(nests$`Visual Obstruction`)
+nests$`Percent Woody Vegetation` <- as.numeric(nests$`Percent Woody Vegetation`)
+nests$`Percent Grass/Forb` <- as.numeric(nests$`Percent Grass/Forb`)
+nests$`Basal Area` <- as.numeric(nests$`Basal Area`)
 
 #' Scale continous predictors
 nests.scaled <- nests %>% 
@@ -53,20 +66,21 @@ nests.scaled <- nests %>%
   dplyr::mutate(`Percent Woody Vegetation` = scale(`Percent Woody Vegetation`)) %>%
   dplyr::mutate(`Percent Grass/Forb` = scale(`Percent Grass/Forb`)) %>%
   dplyr::mutate(`Basal Area` = scale(`Basal Area`))
-  
-#' Convert scaled columns to numeric
-nests.scaled <- nests.scaled %>% 
-  dplyr::mutate(`Visual Obstruction` = as.numeric(`Visual Obstruction`)) %>%
-  dplyr::mutate(`Percent Woody Vegetation` = as.numeric(`Percent Woody Vegetation`)) %>%
-  dplyr::mutate(`Percent Grass/Forb` = as.numeric(`Percent Grass/Forb`)) %>%
-  dplyr::mutate(`Basal Area` = as.numeric(`Basal Area`))
+nests.scaled
+
+#' Change columns back to numeric
+nests.scaled$`Visual Obstruction` <- as.numeric(nests.scaled$`Visual Obstruction`)
+nests.scaled$`Percent Woody Vegetation` <- as.numeric(nests.scaled$`Percent Woody Vegetation`)
+nests.scaled$`Percent Grass/Forb` <- as.numeric(nests.scaled$`Percent Grass/Forb`)
+nests.scaled$`Basal Area` <- as.numeric(nests.scaled$`Basal Area`)
+nests.scaled
 
 
-###################################
+###############################################
 ## Data Prep- Lanscape-Level Covs
 
 #' Create sf object and check projection using mapview
-nests.sf <- st_as_sf(nests.scaled, coords = c("long_v", "lat_v"), crs = 4326) %>%
+nests.sf <- st_as_sf(nests.scaled, coords = c("Long", "Lat"), crs = 4326) %>%
   st_transform(5070)
   mapview(nests.sf)
 
@@ -107,6 +121,9 @@ nests.scaled$Secondary <- scale(nests.scaled$Secondary)
 nests.scaled$Primary <- as.numeric(nests.scaled$Primary)
 nests.scaled$Secondary <- as.numeric(nests.scaled$Secondary)
 
+#' Assign 1 if the NestFate "Hatched", otherwise assign 0
+nests.scaled$NestFate <- ifelse(nests.scaled$NestFate == "Hatched", 1, 0)
+
 
 ####################################
 ## Data Prep- Weather Covariates
@@ -117,76 +134,49 @@ nests.scaled$Secondary <- as.numeric(nests.scaled$Secondary)
 ####################################
 ## Data Prep- Individual Covariates
 
+#' Read in captures csv
+captures <- read_csv("Data Management/Csvs/Raw/captures.csv")
+captures
+ 
+#' Filter data to include only hens 
+captures <- captures %>%
+   dplyr::filter(sex == "F") %>%
+   dplyr::select(bandid, sex, age, captyr) %>%
+   dplyr::rename("BandID" = bandid)
+  captures
+
+#' Merge columns 
+ nests.scaled <- merge(captures, nests.scaled, by = "BandID") 
+
+ #' (?<=_): Only match is there is an underscore immediately before the number we are trying to extract
+ #' (\\d{4}): Match exactly 4 digits
+ #' (?=_) : Only match if the four digits are followed 
+ #' Create NestYr column 
+nests.scaled <- nests.scaled %>%
+  dplyr::mutate(NestYr = str_extract(NestID, "(?<=_)(\\d{4})(?=_)")) 
+
+#' Convert to numeric 
+nests.scaled$NestYr <- as.numeric(nests.scaled$NestYr)
+nests.scaled$captyr <- as.numeric(nests.scaled$captyr)
+
+#' Create a years since capture column
+nests.scaled <- nests.scaled %>%
+ dplyr::mutate(yrsincecap = NestYr-captyr)
+ glimpse(nests.scaled)
+
+#' Assign juvenile as the reference level
+nests.scaled$age <- ifelse(nests.scaled$age == "A", 1, 
+                             ifelse(nests.scaled$age == "J", 0, NA))
+
 #' Nest Incubation Dates- Julian Date
 nests.scaled <- nests.scaled %>%
-  dplyr::mutate("Nest Incubation Date" = lubridate::yday(startI))
+  dplyr::mutate("Nest Incubation Date" = lubridate::yday(startI)) 
 
-
-####################################
-## Data Prep- Encounter Histories
-
-#' Create a sequence of all unique dates between the min start and max end date
-inc.dates <- sort(unique(c(nests$startI, nests$endI)))
-inc.dates <- seq(inc.dates[1], inc.dates[length(inc.dates)], by = 1)
-
-#' Calculate the number of encounter days
-occs <- length(inc.dates)
-
-#' Initialize variables
-first <- last <- array(NA, dim = nrow(nests))
-surv.caps <- matrix(data = NA, nrow = nrow(nests), ncol = occs)
-
-#' Loop through each row of the dataset
-for(i in 1:nrow(nests)){ 
-  first[i] <- which(inc.dates == nests$startI[i]) 
-  for (j in first[i]:occs){  
-    if (surv.caps[i, j]==0) {
-      break
-    }
-  } 
-  
-  last[i]<-ifelse(surv.caps[i,occs] %in% c(1),occs,which(surv.caps[i, ] == 0))
-}
-
-
-############################################
-## Compile Parameters into matrix format
-
-#' Function to fill NA values with 0 throughout dataframe
-fill_NA_with_value <- function(df, value = 0) {
-  #' Ensure that all columns are of numeric type to handle the replacement
-  df[] <- lapply(df, function(col) {
-    if (is.numeric(col)) {
-      #' Replace NA values with the specified value
-      replace(col, is.na(col), value)
-    } else {
-      #' Return the column unchanged if it's not numeric
-      col
-    }
-  })
-  return(df)
-}
-
-#' Apply the function to fill NA values with 0
-nests.ready <- fill_NA_with_value(nests.scaled)
-summary(nests.ready)
-
-#' Model parameters
-X <- cbind(
-  rep(1, nrow(nests.ready)),               # Intercept (1)
-  nests.ready$`Visual Obstruction`,        # Visual Obstruction
-  nests.ready$`Percent Woody Vegetation`,  # Percent Woody Vegetation
-  nests.ready$`Percent Grass/Forb`,        # Percent Grass Forb
-  nests.ready$`Basal Area`,                # Basal Area
-  nests.ready$Primary,                     # Distance to Primary Road
-  nests.ready$Secondary,                   # Distance to Secondary Road
-  nests.ready$Mixed,                       # Mixed Forest
-  nests.ready$Evergreen,                   # Evergreen Forest
-  nests.ready$Deciduous,                   # Deciduous Forest
-  nests.ready$Agriculture,                 # Agriculture
-  nests.ready$Grassland,                   # Grassland  
-  nests.ready$`Nest Incubation Date`       # Nest Incubation Date
-  )       
+nests.scaled$`Nest Incubation Date` <- scale(nests.scaled$`Nest Incubation Date`)
+nests.scaled$`Nest Incubation Date` <- as.numeric(nests.scaled$`Nest Incubation Date`)
+print(nests.scaled$`Nest Incubation Date`)
+    
 
 ################################################################################
 ################################################################################
+

@@ -14,14 +14,20 @@
 
 require(tidyverse)
 require(sf)
+require(mapview)
 
 ##############################
 ## Load in Data 
 
-#' Load in raw nest csv file with data from 2022-2023
+#' Load in raw nest csv file with data from 2022
 #' This is just nests, no veg sampling or no nest values
-nests.raw <- read_csv("Data Management/Csvs/Raw/20250120_nests_raw.csv")
-nests.raw
+nests.raw.2022 <- read_csv("Data Management/Csvs/Raw/20250120_nests_raw_2022.csv")
+nests.raw.2022
+
+#' Load in raw nest csv file with data from 2023
+#' This is just nests, no veg sampling or no nest values
+nests.raw.2023 <- read_csv("Data Management/Csvs/Raw/20250120_nests_raw_2023.csv")
+nests.raw.2023
 
 #' Load in raw nest vegetation csv file with data from 2022 surveys
 #' This file also contains original nest data 
@@ -39,34 +45,56 @@ veg.raw.2023
 ## Check Nesting Attempts per Each Hen Across Years 
 
 #' If all values within a row are missing remove the row
-nests.raw <- nests.raw %>%
+nests.raw.2022 <- nests.raw.2022 %>%
   filter(!apply(., 1, function(x) all(is.na(x))))
+
+#' If all values within a row are missing remove the row
+nests.raw.2023 <- nests.raw.2023 %>%
+  filter(!apply(., 1, function(x) all(is.na(x))))
+
+colnames(nests.raw.2022)
+colnames(nests.raw.2023)
+
+#' Make columns match for 2022 and 2023 so I can bind them together
+nests.raw.2022 <- nests.raw.2022 %>%
+  dplyr::select(-NestFateFINAL,-NestSubFate1FINAL, -NestSubFate2FINAL, -PI_1, -PI_2, -AgeUnhatch, -HenKilled, -ClutchSize) %>%
+  dplyr::rename("EggsDestroyed" = `EggsDestroy`)
+
+nests.raw.2023 <- nests.raw.2023 %>%
+  dplyr::select(-...23)
+
+#' bind rows of nest dfs together
+#' Both years 2022-2023
+nests.raw <- bind_rows(nests.raw.2022, nests.raw.2023)
+nests.raw
 
 #' Create a dataframe and remove "No Nest" values as nest success models are reliant upon the nest being found
 nest_df<- nests.raw %>%
-  dplyr::filter(NestBowlFound == "Y")
+  dplyr::filter(NestBowlFound == "Y") %>%
+  dplyr::filter(NestFate != "Unknown") %>%
+  dplyr::select(-UnhatchIDs, -PI_Comments, -KL_NestTable) 
 
 #' Create unique identifier column 
-nest_df$NestID <- with(nest_df, paste0(BandID,"_",NestNumber,"_",CheckYr))
-glimpse(nest_df)
+nest_df$NestID <- with(nest_df, paste0(BandID,"_",CheckYr,"_", NestNumber))
+head(nest_df$NestID)
 
-#' Subset nest dataframe by grouping it by nest check year, then keeping columns BandID and NestID
-nest.year <- nest_df %>%
-  dplyr::group_by(CheckYr)%>%
-  dplyr::select(CheckYr, BandID,Lat, Long, WMU, CheckDay, NestID, NestFate)
-
-#' Using dplyr to filter birds that nested in both 2022 and 2023
-nests.both <- nest.year %>% dplyr::select(BandID, CheckYr)%>%
-  dplyr::mutate(x=1) %>%
-  distinct() %>%
-  tidyr::pivot_wider( names_from = CheckYr, values_from = x, 
-                      values_fill = 0 ) %>%
-  dplyr::filter(`2022`==1 & `2023`==1) %>%
-  pull(BandID) 
-
-#' Create dataframe 
-nests.year.both <- dplyr::filter(nest.year,bandid %in% nests.both)
-unique(nests.year.both$bandid)
+#' #' Subset nest dataframe by grouping it by nest check year, then keeping columns BandID and NestID
+#' nest.year <- nest_df %>%
+#'   dplyr::group_by(CheckYr)%>%
+#'   dplyr::select(CheckYr, BandID,Lat, Long, WMU, CheckDay, NestID, NestFate)
+#' 
+#' #' Using dplyr to filter birds that nested in both 2022 and 2023
+#' nests.both <- nest.year %>% dplyr::select(BandID, CheckYr)%>%
+#'   dplyr::mutate(x=1) %>%
+#'   distinct() %>%
+#'   tidyr::pivot_wider( names_from = CheckYr, values_from = x, 
+#'                       values_fill = 0 ) %>%
+#'   dplyr::filter(`2022`==1 & `2023`==1) %>%
+#'   pull(BandID) 
+#' 
+#' #' Create dataframe 
+#' nests.year.both <- dplyr::filter(nest.year,bandid %in% nests.both)
+#' unique(nests.year.both$bandid)
 
 ## 16 hens nested across 2022 and 2023
 ## We determined this was not as large of a sample as we needed to look into the dominant hen hypothesis
@@ -82,6 +110,7 @@ veg.raw.2023 <- veg.raw.2023 %>%
   filter(!apply(., 1, function(x) all(is.na(x))))
 
 #' Change all values of specified parameters to character strings so we can bind dfs
+#' Mutate across is new but something I'll use going forward
 veg.raw.2022 <- veg.raw.2022 %>%
   dplyr::mutate(across(c(Lat, Long, PercWoody, PercFern, PercGrassForb, PercLitter, 
                   PercBare, PercBoulder, HtWoody, HtFern, HtGrassForb, 
@@ -112,7 +141,7 @@ veg_clean <- veg_df %>%
                              veg_clean$PlotType == "West", "0","1")
 
 #' Create unique identifier column 
-veg_clean$NestID <- with(veg_clean, paste0(BandID,"_",NestNumber,"_",SurveyYr))
+veg_clean$NestID <- with(veg_clean, paste0(BandID,"_",SurveyYr,"_", NestNumber))
 glimpse(veg_clean)
 
 
@@ -134,6 +163,7 @@ glimpse(veg_clean)
    dplyr::mutate("Long1"= Long) %>%
    dplyr::filter(!is.na(Lat) & !is.na(Long)) %>%
    dplyr::filter(Lat >39) %>%
+   dplyr::filter(Lat <69) %>%
    dplyr::filter(Long <48) %>%
    dplyr::filter(NestID != "8173_1_2022") %>%
                 sf::st_as_sf(coords = c("Long", "Lat"), crs = 4326) %>%
@@ -147,36 +177,73 @@ veg_clean <- veg_clean.sf %>%
   dplyr::filter(NestID %in% veg_clean.sf$NestID) %>%
   dplyr::rename("Lat" = Lat1) %>%
   dplyr::rename("Long" = Long1) %>%
-  dplyr::select(-geometry, -...36, -`Surveyed (Y/N)`,-`Surveyed (Y/N)`, -...37)
+  dplyr::select(-geometry, -...36, -`Surveyed (Y/N)`,-`Surveyed (Y/N)`, -...37) %>%
+  st_drop_geometry()
+head(veg_clean)
 
-##########################
-## Create Date Columns 
+###########################################
+## Create Date Columns- Veg Data
 
 #' Build dataframe with information we need
-veg_clean$checkdate <- paste0(veg_clean$SurveyYr,
+veg_clean$CheckDate <- paste0(veg_clean$SurveyYr,
                               veg_clean$SurveyMo,
                               veg_clean$SurveyDay) 
-head(veg_clean$checkdate)
+head(veg_clean$CheckDate)
 
-# Correct formatting for SurveyMo and SurveyDay (ensuring 2 digits)
+#' Correct formatting for SurveyMo and SurveyDay (ensuring 2 digits)
 veg_clean$CheckDate <- paste0(veg_clean$SurveyYr,
-                              sprintf("%02d", veg_clean$SurveyMo),  # Format month as two digits
-                              sprintf("%02d", veg_clean$SurveyDay)) # Format day as two digits
+                              sprintf("%02d", veg_clean$SurveyMo),  
+                              sprintf("%02d", veg_clean$SurveyDay)) 
 head(veg_clean$CheckDate)
 
 #' Format timestamps correctly in year, month, day format and create start date column 
 veg_clean$CheckDate<-as.Date(as.character(veg_clean$CheckDate),
-                               format="%Y%m%d")
+                               format="%Y%m%d") 
 head(veg_clean$CheckDate)
+veg_clean
 
-#' Write cleaned vegetation csv
-write.csv(veg_clean, "nests.veg_22_23.csv")
+#' Subset columns
+veg_clean <- veg_clean %>%
+  dplyr::select(-SurveyMo, -SurveyDay) 
+veg_clean
 
-###################################
-## Finalize Nesting Data
+#' Filter df by nestids that exist within the subsetted nests df
+nests_veg_clean <- veg_clean %>%
+  dplyr::filter(NestID %in% nest_df$NestID)
 
-#' Filter veg sheet to only include used nests
-nests_clean <- nest_df %>% 
-dplyr::filter(NestID %in% veg_clean$NestID)
 
+########################################
+## Create Date Columns- Nest Data
+
+#' Correct formatting for SurveyMo and SurveyDay (ensuring 2 digits)
+nest_df$CheckDate <- paste0(
+                              nest_df$CheckYr,
+                              sprintf("%02d", nest_df$CheckMo),  
+                              sprintf("%02d", nest_df$CheckDay)) 
+head(nest_df$CheckDate)
+
+#' Format timestamps correctly in year, month, day format and create start date column 
+nest_df$CheckDate<-as.Date(as.character(nest_df$CheckDate),
+                             format="%Y%m%d") 
+head(nest_df$CheckDate)
+nest_df
+
+
+#' Subset columns
+nests_clean <- nest_df %>%
+  dplyr::select(-CheckMo, -CheckDay) 
+nests_clean
+
+###############################################
+## Write Csvs
+
+#' Cleaned nest vegetation csv 
+#' Subset of nests that were marked as found
+write.csv(nests_veg_clean, "20250121_CleanedNestsVeg_2022_2023.csv")
+
+#' Cleaned nests csv file
+#' Filtered out unknown fates
+write.csv(nests_clean, "2025_CleanedNests_2022_2023.csv")
+
+################################################################################
 ################################################################################

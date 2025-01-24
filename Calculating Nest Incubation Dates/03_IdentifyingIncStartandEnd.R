@@ -8,7 +8,7 @@
 #'---
 #'
 
-######################
+###########################################
 ## Load Packages 
 
 library(data.table)
@@ -103,39 +103,43 @@ for (file in file_paths) {
 }
 
 
-#######################################
+##################################################
 ## Data Prep-Consolidate Nesting Data 
 
 #' Read in nest csv 
-nests <- read.csv("Data Management/Csvs/Raw/nests_raw_FEB.csv") %>%
-  dplyr::filter(nestfound == "Y")
+nests <- read.csv("Data Management/Csvs/Processed/Nests/Nests/2025_CleanedNests_2022_2023.csv") 
+unique(nests$NestID)
 
-#' Format days so that there are two digits per each day
-nests$checkday <- stringr::str_pad(nests$checkday, width = 2, pad = "0")
 
-#' Format months so that there are two digits per each month
-nests$checkmo <- stringr::str_pad(nests$checkmo, width = 2, pad = "0")
+#' Make sure that only nest attempts where the nest was found are included
+#' Create a begin column which truncates the ACC data to 30 days prior to the checkdate + 3 days
+nests <- nests %>%
+  dplyr::filter(NestBowlFound == "Y") %>%
+  dplyr::mutate(CheckDate = as.Date(CheckDate)) %>%
+  dplyr::mutate(begin = CheckDate - lubridate::days(30)) %>%
+  dplyr::mutate(checkdate3 = CheckDate + lubridate::days(3)) %>%
+  dplyr::rename("bandid" = BandID)
+glimpse(nests)
 
-#' Paste day, month, and year columns together to create checkdate
-nests$checkdate <- paste0(nests$checkyr, 
-                          nests$checkmo, 
-                          nests$checkday)
-
-#' Remove any rows that contain NAs from the nests df
-nests <- nests %>%tidyr::drop_na()
-
-#' Format checkdate column as a date object
-#' Checkdate3 is 3 days from the checkdate
-nests$checkdate <- as.Date(nests$checkdate, format = "%Y%m%d")
-nests$checkdate3 <- nests$checkdate + days(3)
-
-#' 50 days prior to the nest being checked 
+#' 30 days prior to the nest being checked 
 #' Truncate ACC data for each hen 50 days before the check date
 nests$begin<-nests$checkdate3 - days(30)
 
-unique(nests$nestid)
 
-###################################################
+######################################################################
+## Check to see if there are missing bandids that didn't download
+
+ids <- (unique(nests$bandid)) %>% as.data.frame()
+files <- (list.files("E:/ACC/Processed/zaxis_calcs/", pattern = "\\.csv$", full.names = TRUE))
+bandids <- str_extract(files, "(?<=bandid_)\\d+") %>% as.data.frame()
+missing_bandids <- setdiff(ids$., bandids$.)
+nests.missing <- nests %>%
+  dplyr::filter(bandid %in% missing_bandids) 
+
+#' Use this file to download the rest of the bandids
+saveRDS(nests.missing, "20250124_nests.missing.RDS")
+
+##############################################################
 ## Process Data-Get Incubation Start and End Dates
 
 #' Get incubation start and end dates using daily z-axis standard deviation calculations
@@ -190,7 +194,7 @@ for (i in 1:length(files)) {
     }
     
     df.prop.15<-data.frame(band=sub$bandid[1],
-                           nestid=nest.ID.match$nestid[n],
+                           nestid=nest.ID.match$NestID[n],
                            prop.15=prop.15,
                            date=as.Date(dates))
     
@@ -220,12 +224,6 @@ for (i in 1:length(files)) {
         } }
     endI<-min(which(df.prop.15.complete$endI==1))
     
-    
-    if (is.infinite(endI)) {
-      checkdate <- nest.ID.match$checkdate[n]  
-      endI <- which(df.prop.15.complete$date == checkdate)  
-    }
-    
     nest.attemps.id[[i]][n,]$band<-as.character(df.prop.15$band[n])
     nest.attemps.id[[i]][n,]$nestid<-as.character(df.prop.15$nestid[n])
     nest.attemps.id[[i]][n,]$startI<-as.Date(df.prop.15.complete$date[startI])
@@ -243,19 +241,19 @@ nest.attemps.df <- do.call(rbind, nest.attemps.id)
 
 #' Rename column
 nest.attemps.df <- nest.attemps.df %>%
-  dplyr::rename(bandid = "band") 
+  dplyr::rename(bandid = "band") %>%
+  dplyr::rename("NestID" = nestid)
 
 #' Merge 'nests' with 'nest.attemps.df' using 'nestid'
 nest.attemps.df <- merge(nest.attemps.df, 
-                         nests[, c("nestid", "checkdate", "nestfate")], 
-                         by = "nestid", all.x = TRUE)
+                         nests[, c("NestID", "CheckDate", "NestFate")], 
+                         by = "NestID", all.x = TRUE)
 
 #' Filter nest.attempts.df for rows with NA in startI or endI
 na_nests <- nest.attemps.df[is.na(nest.attemps.df$startI) | is.na(nest.attemps.df$endI), ]
 
 #' Create dataframe
 prop_15_complete.df<- do.call(rbind, prop_15_complete_list)
-
 
 #' Filter 'nests' to only include rows where 'checkdate' matches any 'bandid' in 'nest.attemps.df'
 na.nests.prop15 <- prop_15_complete.df %>%
@@ -266,11 +264,13 @@ filtered_nest.attemps.all.df <- tidyr::drop_na(nest.attemps.df)
 
 #' Filter the dataframe to only include rows where the 'checkdate' is within 14 days of 'endI'
 filtered_nest.attemps.14.df <- nest.attemps.df %>%
-  dplyr::filter(checkdate <= (endI + 14) & checkdate >= endI) 
+  dplyr::filter(CheckDate <= (endI + 21) & CheckDate >= endI) 
 
 
-############################
+##############################################
 ## Output Data 
 
 write.table(filtered_nest.attemps.df, "NestAttempts_allbirds.csv", sep = ",", row.names = FALSE, col.names = TRUE)
 write.table(filtered_nest.attemps.df, "NestAttempts_allbirdsfiltered.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+
+
