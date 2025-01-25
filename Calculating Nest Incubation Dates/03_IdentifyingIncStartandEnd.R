@@ -133,7 +133,7 @@ nests.missing <- nests %>%
   dplyr::filter(bandid %in% missing_bandids) 
 
 #' Use this file to download the rest of the bandids
-write.csv(nests.missing, "20250124_nests.missing.csv")
+#write.csv(nests.missing, "20250124_nests.missing.csv")
 
 
 ##############################
@@ -268,7 +268,9 @@ filtered_nest.attemps.all.df <- tidyr::drop_na(nest.attemps.df)
 
 #' Filter the dataframe to only include rows where the 'checkdate' is within 14 days of 'endI'
 filtered_nest.attemps.check.df <- filtered_nest.attemps.all.df %>%
-  dplyr::filter( CheckDate >= endI) 
+  dplyr::filter( CheckDate >= endI) %>%
+  dplyr::filter(startI != endI) %>%
+  dplyr::filter(endI >= startI)
 
 
 ##############################################

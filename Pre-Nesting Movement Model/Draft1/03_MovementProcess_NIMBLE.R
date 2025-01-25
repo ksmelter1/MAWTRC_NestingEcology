@@ -8,7 +8,7 @@
 #'---
 #'  
 #' **Purpose**: This script fits SSF models in frequentist and Bayesian frameworks and extracts coefficient data
-#' **Last Updated**: 1/15/25
+#' **Last Updated**: 1/25/25
 
 
 ####################
@@ -40,14 +40,12 @@ load("Data Management/RData/Individual-Specific Movement Process/RData Files/02_
 rm(x)
 
 dat_2.ready <- random_steps %>%
-  dplyr::mutate(elev = scale(elev)) %>%
   dplyr::mutate(secondary = scale(secondary)) %>%
   dplyr::mutate(primary = scale(primary)) 
 
 glimpse(dat_2.ready)
 
 dat_2.ready <- dat_2.ready %>% 
-  dplyr::mutate(elev = as.numeric(elev)) %>%
   dplyr::mutate(secondary = as.numeric(secondary)) %>%
   dplyr::mutate(primary = as.numeric(primary)) 
 
@@ -120,7 +118,6 @@ X <- cbind(
   dat_2.ready$Evergreen,       # Evergreen Forest
   dat_2.ready$Deciduous,       # Deciduous Forest
   dat_2.ready$Agriculture,     # Agriculture
-  dat_2.ready$elev,            # Elevation
   dat_2.ready$Grassland)       # Grassland    
 
 
@@ -198,8 +195,8 @@ samples_df <- as.data.frame(samples_matrix)
 
 #' Create a vector of new names
 new_names <- c("Intercept", "Distance to Primary Road", "Distance to Secondary Road", 
-               "Mixed Forest", "Evergreen Forest", "Deciduous Forest", "Agriculture", 
-               "Elevation", "Grassland/Shrub")
+               "Mixed Forest", "Evergreen Forest", "Deciduous Forest", "Agriculture",
+               "Grassland/Shrub")
 
 #' Assign the variable names to the columns of the beta_samples
 colnames(beta_samples) <- new_names
