@@ -116,14 +116,10 @@ unique(nests$NestID)
 nests <- nests %>%
   dplyr::filter(NestBowlFound == "Y") %>%
   dplyr::mutate(CheckDate = as.Date(CheckDate)) %>%
-  dplyr::mutate(begin = CheckDate - lubridate::days(30)) %>%
   dplyr::mutate(checkdate3 = CheckDate + lubridate::days(3)) %>%
+  dplyr::mutate(begin = checkdate3 - lubridate::days(30)) %>%
   dplyr::rename("bandid" = BandID)
 glimpse(nests)
-
-#' 30 days prior to the nest being checked 
-#' Truncate ACC data for each hen 50 days before the check date
-nests$begin<-nests$checkdate3 - days(30)
 
 
 ######################################################################
@@ -137,7 +133,15 @@ nests.missing <- nests %>%
   dplyr::filter(bandid %in% missing_bandids) 
 
 #' Use this file to download the rest of the bandids
-saveRDS(nests.missing, "20250124_nests.missing.RDS")
+write.csv(nests.missing, "20250124_nests.missing.csv")
+
+
+##############################
+## Update 1/24/25
+
+# I Was unable to download ACC data from these 12 birds from the VM
+# We might just have to move forward with our sample of 156 for now
+
 
 ##############################################################
 ## Process Data-Get Incubation Start and End Dates
@@ -231,7 +235,7 @@ for (i in 1:length(files)) {
     
   }
     
-    #' Store df.prop.15.complete for each bird in the list
+
     prop_15_complete_list[[paste("bird_",i, "_nest_", n, sep = "")]] <- df.prop.15.complete
     
   }
@@ -263,14 +267,17 @@ na.nests.prop15 <- prop_15_complete.df %>%
 filtered_nest.attemps.all.df <- tidyr::drop_na(nest.attemps.df)
 
 #' Filter the dataframe to only include rows where the 'checkdate' is within 14 days of 'endI'
-filtered_nest.attemps.14.df <- nest.attemps.df %>%
-  dplyr::filter(CheckDate <= (endI + 21) & CheckDate >= endI) 
+filtered_nest.attemps.check.df <- filtered_nest.attemps.all.df %>%
+  dplyr::filter( CheckDate >= endI) 
 
 
 ##############################################
 ## Output Data 
 
-write.table(filtered_nest.attemps.df, "NestAttempts_allbirds.csv", sep = ",", row.names = FALSE, col.names = TRUE)
-write.table(filtered_nest.attemps.df, "NestAttempts_allbirdsfiltered.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+write.table(filtered_nest.attemps.check.df,
+            "Data Management/Csvs/Processed/IncubationDates/20250124_NestAttempts_allbirds.csv",
+            sep = ",",
+            row.names = FALSE, 
+            col.names = TRUE)
 
 
