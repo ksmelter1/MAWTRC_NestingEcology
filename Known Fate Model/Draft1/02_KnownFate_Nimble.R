@@ -19,6 +19,8 @@ library(nimble)
 library(MCMCvis)
 library(tidyverse)
 
+load("Data Management/RData/Known Fate/Draft1/20250123_KnownFate_Draft1.RData")
+
 
 #####################################################
 ## Data Prep- Encounter Histories
@@ -52,45 +54,6 @@ for(i in 1:nrow(nests.scaled)){ #for each individual
 #' Check work on first individual
 surv.caps[1,]
 
-#####################################################################
-## Attempt at creating an array
-
-#' Max number of nests a bird had
-#' nn.nests <- nests.scaled %>%
-#'   dplyr::group_by(BandID) %>%
-#'   summarize(n = n())
-#' max(nn.nests$n)
-#' 
-#' #' Initialize array
-#' n.hens <- length(unique(nests.scaled$BandID))
-#' n.nests <- max(nn.nests$n)
-#' n.days <- max(occs)
-#' z <- array(NA, dim = c(n.hens, n.nests, n.days))
-#' 
-#' #' Fill the array
-#' for (h in 1:n.hens) {
-#'   ## grab single hen
-#'   tmp.hen <- nests.scaled[which(nests.scaled$BandID == unique(nests.scaled$BandID)[h]), ]
-#'   n.nests <- unique(tmp.hen$NestID)
-#'   
-#'   for (q in 1:length(n.nests)) {
-#'     tmp.hen.nests <- tmp.hen[which(tmp.hen$NestID == n.nests[n]), ]
-#'     n.days <- tmp.hen.nests %>%
-#'       dplyr::mutate(interval = length(seq.Date(startI, endI, by = "day")))
-#'     
-#'     for (d in 1:n.days) {
-#'       
-#'       # Assign filtered data to z[h, q, d]
-#'       z[h, q, d] <- nests.scaled %>%
-#'         dplyr::filter(BandID == unique(nests.scaled$BandID)[h]) %>%
-#'         dplyr::filter(NestID == unique(NestID)[q]) %>%
-#'         dplyr::mutate(occs == length(nests$endI))
-#'     }
-#'   }
-#' }
-
-#' Add 0s and 1s for each column 
-#' rbind for each hen and nest
 
 ##################################################
 ## Simulate Temperature Data
@@ -100,16 +63,37 @@ set.seed(123)
 mean_temp <- 60   
 sd_temp <- 10   
 
+# FEB: Creating a fake second covariate
+mean_precip <- 10   
+sd_precip <- 1 
+
 #' Simulate temperatures for the entire sequence of days
 daily_temps <- rnorm(occs, mean = mean_temp, sd = sd_temp)
 
 #' Create a matrix to match surv.caps dimensions
-temp.values <- matrix(NA, nrow = nrow(nests), ncol = occs)
+# FEB: let's say you have temp and precep per day and it differs by nest location (this is like your real data)
+# FEB: So you have a matrix of temperatures
+# FEB: I just subbed in random numbers for your NAs here
+temp.values <- matrix(rnorm(nrow(nests)*occs, mean = mean_temp, sd = sd_temp), nrow = nrow(nests), ncol = occs)
+precip.values <- matrix(rnorm(nrow(nests)*occs, mean = mean_precip, sd = sd_precip), nrow = nrow(nests), ncol = occs)
 
 #' Populate temp.values with the simulated daily temperatures
-for(i in 1:nrow(nests)) {
-  temp.values[i, first[i]:last[i]] <- daily_temps[first[i]:last[i]]
-}
+# FEB: This isn't needed, because your loop within the MCMC sampler just will never use the data outside the first:last span
+#for(i in 1:nrow(nests)) {
+#  temp.values[i, first[i]:last[i]] <- daily_temps[first[i]:last[i]]
+#}
+
+# FEB: bind them together in an array
+n.weather.cov<-2
+weather.array<-array(c(temp.values,precip.values),dim=c(nrow(nests),occs,n.weather.cov))
+str(weather.array)
+#FEB: here is how these dimensions work out
+weather.array[1,,] # Nest 1, all days, all cov
+weather.array[,1,] # All nests, day 1, all cov
+weather.array[,,1] # All nests, all days, cov 1
+weather.array[1,1,] # Nest 1, day 1, all cov
+weather.array[1,,1] # Nest 1, all days, cov 1
+weather.array[,1,1] # All nests, day 1, cov 1 
 
 ###################################################
 ## Compile Parameters into matrix format
@@ -319,9 +303,10 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
   labs(x = "Parameter", y = "Beta Estimate") +
   theme_minimal() + 
   coord_flip()+
-  scale_color_manual(values = c("Individual" = "#fb8b24", "Nest-Level" = "#A44200", "Landscape-Level" = "#D65F5F")) +  # Set color for Microscale, Macroscale
+  scale_color_manual(values = c("Individual" = "#5f0f40", "Nest-Level" = "#A44200", "Landscape-Level" = "#D65F5F")) +  # Set color for Microscale, Macroscale
   scale_shape_manual(values = c("Individual" = 15, "Nest-Level" = 17, "Landscape-Level" = 16))+  # Set shapes for Microscale, Macroscale
   theme(
     axis.title.x = element_text(margin = margin(t = 10))  # Pad the x-axis label by 10 points (~0.1 inch)
   )
+
 p2.betas
