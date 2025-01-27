@@ -11,7 +11,7 @@
 #' **Purpose**: This script produces coefficient and prediction plots of the model outputs
 #' **Last Updated**: 1/25/2025
 
-#####################
+################################################################################
 ## Load Packages 
 
 #' Vector of package names
@@ -29,7 +29,7 @@ load_packages <- function(package_name) {
 lapply(packages, load_packages)
 
 
-##########################
+################################################################################
 ## Data Prep for Plots
 
 #' Load in RData
@@ -53,7 +53,7 @@ credible_intervals <- samples_long %>%
     .groups = 'drop'
   )
 
-######################
+################################################################################
 ## Density Plot
 
 #' Create plot
@@ -68,7 +68,7 @@ p1.density <-ggplot(samples_long, aes(x = estimate, fill = parameter)) +
   geom_vline(data = credible_intervals, aes(xintercept = upper), linetype = "dashed", color = "red")
 p1.density
 
-############################
+################################################################################
 ## Data Prep for Beta Plot
 
 #' Calculate mean estimates for each parameter
@@ -112,7 +112,7 @@ mean_estimates <- mean_estimates %>%
                                        "Agriculture"))) 
 mean_estimates
 
-#########################
+################################################################################
 ## Beta Plot 
 
 #' Beta estimates and associated 95% credible intervals 
@@ -139,113 +139,77 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
          height = 10,
          bg = "white")
 
-#' #########################
-#' ## Prediction Plots
-#' 
-#' #' Distance to Primary Road
-#' CIs <- matrix(quantile(nimbleMCMC_samples[[1]][,2], c(0.05, 0.5, 0.95)), nrow=1)
-#' pred.seq<-seq(-1,1,0.1)
-#' pred.response.log<-pred.seq%*%CIs
-#' pred.response<-data.frame(exp(pred.response.log))
-#' colnames(pred.response)<-c("lCI","median","uCI")
-#' 
-#' p3.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-#'   geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
-#'   theme_minimal() +
-#'   xlab("Distance to Primary Road") +
-#'   ylab("Relative Probability of Use") +
-#'   theme(
-#'     axis.title.x = element_text(margin = margin(t = 10)), # Pad the x-axis label by 10 points (~0.1 inch)
-#'     axis.title.y = element_text(margin = margin(t = 10)) 
-#'     )
-#' p3.predict
-#' 
-#' #' Agriculture
-#' CIs<-matrix(quantile(jags_samples[[1]][,7],c(0.05,0.5,0.95)),nrow=1)
-#' pred.seq<-seq(-1,1,0.1)
-#' pred.response.log<-pred.seq%*%CIs
-#' pred.response<-data.frame(exp(pred.response.log))
-#' colnames(pred.response)<-c("lCI","median","uCI")
-#' 
-#' p8.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-#'   geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
-#'   theme_minimal() +
-#'   xlab("Agriculture") +
-#'   ylab("Relative Probability of Use") +
-#'   theme(
-#'     axis.title.x = element_text(margin = margin(t = 10)), # Pad the x-axis label by 10 points (~0.1 inch)
-#'     axis.title.y = element_text(margin = margin(r = 10)) 
-#'   )
-#' p8.predict
-#' 
-#' #' Visual Obstruction
-#' CIs<-matrix(quantile(jags_samples[[1]][,9],c(0.05,0.5,0.95)),nrow=1)
-#' pred.seq<-seq(-1,1,0.1)
-#' pred.response.log<-pred.seq%*%CIs
-#' pred.response<-data.frame(exp(pred.response.log))
-#' colnames(pred.response)<-c("lCI","median","uCI")
-#' 
-#' p10.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-#'   geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
-#'   theme_minimal() +
-#'   xlab("Visual Obstruction") +
-#'   ylab("Relative Probability of Use") +
-#'   theme(
-#'     axis.title.x = element_text(margin = margin(t = 10)), # Pad the x-axis label by 10 points (~0.1 inch)
-#'     axis.title.y = element_text(margin = margin(r = 10)) 
-#'   )
-#' p10.predict
-#' 
-#' #' Percent Woody Vegetation
-#' CIs<-matrix(quantile(jags_samples[[1]][,11],c(0.05,0.5,0.95)),nrow=1)
-#' pred.seq<-seq(-1,1,0.1)
-#' pred.response.log<-pred.seq%*%CIs
-#' pred.response<-data.frame(exp(pred.response.log))
-#' colnames(pred.response)<-c("lCI","median","uCI")
-#' 
-#' p12.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-#'   geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
-#'   theme_minimal() +
-#'   xlab("Percent Woody Vegetation") +
-#'   ylab("Relative Probability of Use") +
-#'   theme(
-#'     axis.title.x = element_text(margin = margin(t = 10)), # Pad the x-axis label by 10 points (~0.1 inch)
-#'     axis.title.y = element_text(margin = margin(r = 10)) 
-#'   )
-#' p12.predict
-#' 
-#' #' Invasive Woody Vegetation
-#' CIs<-matrix(quantile(jags_samples[[1]][,13],c(0.05,0.5,0.95)),nrow=1)
-#' pred.seq<-seq(-1,1,0.1)
-#' pred.response.log<-pred.seq%*%CIs
-#' pred.response<-data.frame(exp(pred.response.log))
-#' colnames(pred.response)<-c("lCI","median","uCI")
-#' 
-#' p14.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-#'   geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
-#'   theme_minimal() +
-#'   xlab("Invasive Woody Vegetation") +
-#'   ylab("Relative Probability of Use") +
-#'   theme(
-#'     axis.title.x = element_text(margin = margin(t = 10)), # Pad the x-axis label by 10 points (~0.1 inch)
-#'     axis.title.y = element_text(margin = margin(r = 10)) 
-#'   )
-#' p14.predict
-#' 
-#' #' Grassland/Shrub
-#' CIs<-matrix(quantile(jags_samples[[1]][,15],c(0.05,0.5,0.95)),nrow=1)
-#' pred.seq<-seq(-1,1,0.1)
-#' pred.response.log<-pred.seq%*%CIs
-#' pred.response<-data.frame(exp(pred.response.log))
-#' colnames(pred.response)<-c("lCI","median","uCI")
-#' 
-#' p16.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-#'   geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
-#'   theme_minimal() +
-#'   xlab("Grassland/Shrub") +
-#'   ylab("Relative Probability of Use") +
-#'   theme(
-#'     axis.title.x = element_text(margin = margin(t = 10)), # Pad the x-axis label by 10 points (~0.1 inch)
-#'     axis.title.y = element_text(margin = margin(r = 10)) 
-#'   )
-#' p16.predict
+#########################################################################
+## Prediction Plots
+ 
+#' Basal Area
+ CIs <- matrix(quantile(samples_df[,11], c(0.05, 0.5, 0.95)), nrow=1)
+pred.seq<-seq(-1,1,0.1)
+pred.response.log<-pred.seq%*%CIs
+pred.response<-data.frame(exp(pred.response.log))
+colnames(pred.response)<-c("lCI","median","uCI")
+
+p1.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
+ geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
+theme_minimal() +
+xlab("Basal Area") +
+ylab("Relative Probability of Use") +
+ylim(0, 3) +
+theme(
+axis.title.x = element_text(margin = margin(t = 10)), 
+axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
+p1.predict
+
+
+#' Invasive Woody Vegetation
+CIs <- matrix(quantile(samples_df[,12], c(0.05, 0.5, 0.95)), nrow=1)
+pred.seq<-seq(-1,1,0.1)
+pred.response.log<-pred.seq%*%CIs
+pred.response<-data.frame(exp(pred.response.log))
+colnames(pred.response)<-c("lCI","median","uCI")
+
+p2.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
+  theme_minimal() +
+  xlab("Invasive Woody Vegetation") +
+  ylab("Relative Probability of Use") +
+  theme(
+    axis.title.x = element_text(margin = margin(t = 10)), 
+    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
+p2.predict
+
+#' Percent Woody Vegetation
+CIs <- matrix(quantile(samples_df[,10], c(0.05, 0.5, 0.95)), nrow=1)
+pred.seq<-seq(-1,1,0.1)
+pred.response.log<-pred.seq%*%CIs
+pred.response<-data.frame(exp(pred.response.log))
+colnames(pred.response)<-c("lCI","median","uCI")
+
+p3.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
+  theme_minimal() +
+  xlab("Percent Woody Vegetation") +
+  ylab("Relative Probability of Use") +
+  theme(
+    axis.title.x = element_text(margin = margin(t = 10)), 
+    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
+p3.predict
+
+
+#' Visual Obstruction
+CIs <- matrix(quantile(samples_df[,8], c(0.05, 0.5, 0.95)), nrow=1)
+pred.seq<-seq(-1,1,0.1)
+pred.response.log<-pred.seq%*%CIs
+pred.response<-data.frame(exp(pred.response.log))
+colnames(pred.response)<-c("lCI","median","uCI")
+
+p4.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
+  theme_minimal() +
+  xlab("Visual Obstruction") +
+  ylab("Relative Probability of Use") +
+  theme(
+    axis.title.x = element_text(margin = margin(t = 10)), 
+    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
+p4.predict
+
