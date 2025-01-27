@@ -172,15 +172,16 @@ for (i in 1:nrow(pa.nests.5C1)) {
 pa.nests.5C1$startdate <- as.Date(pa.nests.5C1$startdate, format = "%Y%m%d")
 glimpse(pa.nests.5C1)
 
-############################################################
-## Pull Movebank Data from Movebank for Specified Dates 
+
+########################################################################
+## Connect to Movebank
 
 login <- movebank_store_credentials(username = "Kyle.Smelter",
                                     password="Rayshawks5!",
                                     key="Kyle",
                                     force= T)
 
-####################
+#######################################################################
 ## WMU 4D 
 
 unique.ID.4d<-unique(pa.nests.4D1$NestID)
@@ -217,7 +218,7 @@ for(i in 1:nrow(tmp.subset.4d)){
 }
 
 
-##################
+#####################################################################
 ## WMU 3D 
 
 
@@ -254,7 +255,7 @@ for (j in 1:length(unique.ID.3d)){
   }
 }
 
-#################
+#####################################################################
 ##  WMU 2D 
 
 
@@ -291,11 +292,12 @@ for (j in 1:length(unique.ID.2d)){
 }
 
 
-###################
+#################################################################
 ##  WMU 5C 
 
 
-unique.ID.5c<-unique(pa.nests.5C1$NestID)
+unique.ID.5c<-unique(pa.nests.5C1$NestID) 
+
 
 for (j in 1:length(unique.ID.5c)){
   tmp.subset.5c<-pa.nests.5C1[which(pa.nests.5C$NestID==unique.ID.5c[j]),]
@@ -329,8 +331,8 @@ for (j in 1:length(unique.ID.5c)){
 }
 
 
-#################################
-## Prep Data for Next Script
+#########################################################################
+## Organize GPS Data
 
 #' Convert move objects to dataframes
 full_all_3d <- as.data.frame(full_all_3d)
@@ -353,6 +355,5 @@ hens.all <- df.all%>%
          lat = unlist(map(df.all$geometry,2))) %>%
   dplyr::select(BirdID, timestamp,long, lat) 
 
-#' Save RData file for hens.all
-#' Output all hens 
-#save(hens.all, "Data Management/RData/Individual-Specific Movement Process/RData Files/01_MovementProcess_Prep.RData")
+################################################################################
+################################################################################

@@ -34,7 +34,7 @@ lapply(packages, load_packages)
 ## Data Prep for Plots
 
 #' Load in RData
-load("Data Management/RData/Nest-Site Selection/ModelResults/20250118_NimbleResults.RData")
+load("Data Management/RData/Nest-Site Selection/ModelResults/PreliminaryResults/20250125_NimbleResults.RData")
 
 #' Reshape the data into long format for ggplot
 samples_long <- samples_df %>%

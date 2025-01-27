@@ -15,6 +15,7 @@ library(data.table)
 library(matrixStats)
 library(lubridate)
 library(tidyr)
+library(tidyverse)
 
 ###############################################
 ## Data Prep- Process Csv Files for Each Hen
@@ -133,7 +134,7 @@ nests.missing <- nests %>%
   dplyr::filter(bandid %in% missing_bandids) 
 
 #' Use this file to download the rest of the bandids
-#write.csv(nests.missing, "20250124_nests.missing.csv")
+write.csv(nests.missing, "Calculating Nest Incubation Dates/20250124_Nests.Missing.csv")
 
 
 ##############################
@@ -211,19 +212,19 @@ for (i in 1:length(files)) {
     df.prop.15.complete$endI<-rep(0,nrow(df.prop.15.complete))
     
     for (k in 1:(nrow(df.prop.15.complete)-2)){
-      df.prop.15.complete$startI[k][df.prop.15.complete$prop.15[k]>=0.8 & 
-                                      df.prop.15.complete$prop.15[k+1]>=0.8 & 
-                                      df.prop.15.complete$prop.15[k+2]>=0.8]<-1
+      df.prop.15.complete$startI[k][df.prop.15.complete$prop.15[k]>=0.85 & 
+                                      df.prop.15.complete$prop.15[k+1]>=0.85 & 
+                                      df.prop.15.complete$prop.15[k+2]>=0.85]<-1
     }
     startI<-min(which(df.prop.15.complete$startI==1))  
     if(startI=="Inf"){
       for (m in 1:nrow(df.prop.15.complete)-1){
-        df.prop.15.complete$endI[m][df.prop.15.complete$prop.15[m]<=0.8 & 
-                                      df.prop.15.complete$prop.15[m+1]<=0.8] <-1
+        df.prop.15.complete$endI[m][df.prop.15.complete$prop.15[m]<=0.85 & 
+                                      df.prop.15.complete$prop.15[m+1]<=0.85] <-1
       }} else{
         for (m in startI:nrow(df.prop.15.complete)-1){
-          df.prop.15.complete$endI[m][(df.prop.15.complete$prop.15[m] <= 0.8 & 
-                                         df.prop.15.complete$prop.15[m+1] <= 0.8)| 
+          df.prop.15.complete$endI[m][(df.prop.15.complete$prop.15[m] <= 0.85 & 
+                                         df.prop.15.complete$prop.15[m+1] <= 0.85)| 
                                         df.prop.15.complete$prop.15[m] == 1] <- 1
         } }
     endI<-min(which(df.prop.15.complete$endI==1))
@@ -261,7 +262,7 @@ prop_15_complete.df<- do.call(rbind, prop_15_complete_list)
 
 #' Filter 'nests' to only include rows where 'checkdate' matches any 'bandid' in 'nest.attemps.df'
 na.nests.prop15 <- prop_15_complete.df %>%
-  dplyr::filter(nestid %in% na_nests$nestid)
+  dplyr::filter(nestid %in% na_nests$NestID)
 
 #' Drop all NA values
 filtered_nest.attemps.all.df <- tidyr::drop_na(nest.attemps.df)

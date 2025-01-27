@@ -7,9 +7,6 @@
 #'   html_document: 
 #'     toc: true
 #'---
-#'
-#+ include = FALSE
-knitr::opts_chunk$set(warning = FALSE, message = FALSE, cache = TRUE)
 #'  
 #' **Purpose**: This script obtains Pennsylvania NLCD data and creates buffers for each used and available nest to extract the proportion of landcover within
 #' **Last Updated**: 1/18/2025
