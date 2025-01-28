@@ -11,7 +11,7 @@
 #' **Purpose**: This script obtains Pennsylvania NLCD data and creates buffers for each used and available nest to extract the proportion of landcover within
 #' **Last Updated**: 1/18/2025
 
-#######################
+################################################################################
 ## Load Packages 
 
 #' Vector of package names
@@ -37,7 +37,7 @@ load_packages <- function(package_name) {
 lapply(packages, load_packages)
 
 
-##############
+################################################################################
 ## NLCD Prep
 
 #' GEOIDs above 60 are territories and islands so they are being removed for scaling
@@ -67,10 +67,10 @@ terra::values(pa.nlcd) <- ifelse(terra::values(pa.nlcd) %in% c(21:24), yes = "De
 #' Check the reclassified values 
 unique(terra::values(pa.nlcd))
 
-######################
+################################################################################
 ## Load in NLCD
 
-#' Load in NLCD
+#' Read in created NLCD file from above
 pa.nlcd <- terra::rast("Data Management/Rasters/nlcd/paNLCD.tiff")
 
 pa.nests <- read_csv("Data Management/Csvs/Processed/Nests/Vegetation Surveys/20250121_CleanedNestsVeg_2022_2023.csv")
@@ -96,8 +96,8 @@ landcov <-terra::extract(pa.nlcd, pa.nests)
 pa.nests.landcov <- cbind(pa.nests, landcov) %>%
   dplyr::rename("landuse" = Class)
 
-############################################
+################################################################################
 ## Save RData file 20250118_Landcover.RData
 
-############################################################################################
-############################################################################################
+################################################################################
+################################################################################

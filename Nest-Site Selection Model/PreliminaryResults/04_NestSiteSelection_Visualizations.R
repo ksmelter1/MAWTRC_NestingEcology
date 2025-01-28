@@ -48,8 +48,8 @@ head(samples_long)
 credible_intervals <- samples_long %>%
   group_by(parameter) %>%
   summarise(
-    lower = quantile(estimate, 0.05),   # 2.5th percentile
-    upper = quantile(estimate, 0.95),   # 97.5th percentile
+    lower = quantile(estimate, 0.05),  
+    upper = quantile(estimate, 0.95),   
     .groups = 'drop'
   )
 
@@ -58,8 +58,8 @@ credible_intervals <- samples_long %>%
 
 #' Create plot
 p1.density <-ggplot(samples_long, aes(x = estimate, fill = parameter)) +
-  geom_density(alpha = 0.5) +  # Density plot with transparency
-  facet_wrap(~parameter, scales = "free", ncol = 2) +  # Create separate panels for each parameter
+  geom_density(alpha = 0.5) +  
+  facet_wrap(~parameter, scales = "free", ncol = 2) +  
   labs(x = "Parameter Estimate", y = "Density") +
   theme_minimal() +
   theme(legend.position = "none") +
@@ -67,6 +67,7 @@ p1.density <-ggplot(samples_long, aes(x = estimate, fill = parameter)) +
   geom_vline(data = credible_intervals, aes(xintercept = lower), linetype = "dashed", color = "red") +
   geom_vline(data = credible_intervals, aes(xintercept = upper), linetype = "dashed", color = "red")
 p1.density
+
 
 ################################################################################
 ## Data Prep for Beta Plot
@@ -76,9 +77,9 @@ p1.density
 mean_estimates <- samples_long %>%
   dplyr::group_by(parameter) %>%
   summarise(
-    mean_estimate = mean(estimate),  # mean of the estimates
-    lower = quantile(estimate, 0.05),  # 2.5th percentile (lower bound of credible interval)
-    upper = quantile(estimate, 0.95),  # 97.5th percentile (upper bound of credible interval)
+    mean_estimate = mean(estimate), 
+    lower = quantile(estimate, 0.05),  
+    upper = quantile(estimate, 0.95),  
     .groups = 'drop'
   ) %>%
   dplyr::filter(parameter != "Intercept")
@@ -112,6 +113,7 @@ mean_estimates <- mean_estimates %>%
                                        "Agriculture"))) 
 mean_estimates
 
+
 ################################################################################
 ## Beta Plot 
 
@@ -139,11 +141,12 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
          height = 10,
          bg = "white")
 
+
 #########################################################################
 ## Prediction Plots
  
 #' Basal Area
- CIs <- matrix(quantile(samples_df[,11], c(0.05, 0.5, 0.95)), nrow=1)
+CIs <- matrix(quantile(samples_df[,11], c(0.05, 0.5, 0.95)), nrow=1)
 pred.seq<-seq(-1,1,0.1)
 pred.response.log<-pred.seq%*%CIs
 pred.response<-data.frame(exp(pred.response.log))
@@ -190,6 +193,7 @@ p3.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() 
   theme_minimal() +
   xlab("Percent Woody Vegetation") +
   ylab("Relative Probability of Use") +
+  ylim(0,3) +
   theme(
     axis.title.x = element_text(margin = margin(t = 10)), 
     axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
@@ -212,4 +216,7 @@ p4.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() 
     axis.title.x = element_text(margin = margin(t = 10)), 
     axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
 p4.predict
+
+################################################################################
+################################################################################
 
