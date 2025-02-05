@@ -129,11 +129,24 @@ pa.nests.covs <- cbind(pa.nests.landcov.sf, pa.nests.landcov.sf.roads) %>%
                 BandID, 
                 PercGrassForb,
                 PercWoody, 
+                PercLitter,
+                PercBare,
+                PercBoulder,
                 AvgMaxVO, 
                 primary,
                 secondary,
                 StemCount,
-                WoodyType1) 
+                WoodyType1,
+                AvgVO,
+                PercFern, 
+                GuardHt,
+                HtWoody,
+                HtFern,
+                HtGrassForb,
+                HtLitter, 
+                HtBoulder
+                ) 
+
 
 #' Convert land cover classifications to a categorical variable and create separate columns
 pa.nests.covs$Agriculture <- ifelse(pa.nests.covs$landuse == "Agriculture", 1, 0)
@@ -143,8 +156,9 @@ pa.nests.covs$Evergreen <- ifelse(pa.nests.covs$landuse == "Evergreen Forest", 1
 pa.nests.covs$Mixed <- ifelse(pa.nests.covs$landuse == "Mixed Forest", 1, 0)
 pa.nests.covs$Grassland<- ifelse(pa.nests.covs$landuse == "Grassland/Shrub", 1, 0)
 
+
 ########################################
-## Save RData file 20250124_Covs
+## Save RData file 20250204_Covs
 
 ################################################################################
 ################################################################################

@@ -36,7 +36,10 @@ load_packages <- function(package_name) {
 #' Apply the function to each package name
 lapply(packages, load_packages)
 
-#' Load Raster
+
+load("Data Management/RData/Pre-Nesting Movement Model/RData Files/Draft3/20250131_Movebank.RData")
+
+#' Load NLCD Raster
 pa.nlcd <- terra::rast("Data Management/Rasters/nlcd/paNLCD.tiff")
 
 
@@ -59,9 +62,6 @@ secondary <- terra::rast("Data Management/Rasters/PA Roads/paroadrast.sec.tiff")
 #' 3. Nest the track by id
 #' 4. Take one individual's data, view its sampling rate and adjust using steps by burst
 #' 5. Use the map function to apply the same steps by burst parameters across the marked population
-
-#' Load in RData
-#load ("Data Management/RData/Individual-Specific Movement Process/RData Files/MovementProcess_Prep.RData") 
 
 #' Temporary Data
 dat <- hens.all %>%

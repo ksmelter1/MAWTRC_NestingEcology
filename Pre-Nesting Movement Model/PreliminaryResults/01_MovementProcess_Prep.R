@@ -64,7 +64,7 @@ pa.nests.4D <- dplyr::filter(pa.nests, WMU =="4D")%>%
 ## Incubation Data 4D
 
 #' Csv from incubation start and end script
-nests.inc <- read_csv("Data Management/Csvs/Processed/IncubationDates/Draft2/20250124_NestAttempts_allbirds.csv")
+nests.inc <- read_csv("Data Management/Csvs/Processed/IncubationDates/Draft3/20250131_NestAttempts_allbirds.csv")
 nests.inc
 
 #' Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
@@ -254,6 +254,7 @@ for (j in 1:length(unique.ID.3d)){
     }
   }
 }
+
 
 #####################################################################
 ##  WMU 2D 

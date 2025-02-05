@@ -18,17 +18,12 @@ library(terra)
 library(mapview)
 library(sf)
 
-
 ##########################################
 ## Data Prep- Nest-Level Covs
 
 #' Nest start and end date csv
-nests <- read_csv("Data Management/Csvs/Processed/IncubationDates/NestAttempts_allbirds.csv")
+nests <- read_csv("Data Management/Csvs/Processed/IncubationDates/Draft2/20250124_NestAttempts_allbirds.csv")
 nests
-
-#' Rename to NestID
-nests <- nests %>%
-  dplyr::rename("NestID" = nestid)
 
 #' Nest veg csv
 nests.veg <- read_csv("Data Management/Csvs/Processed/Nests/Vegetation Surveys/20250121_CleanedNestsVeg_2022_2023.csv")
@@ -40,39 +35,51 @@ nests.veg.filtered <- nests.veg %>%
   dplyr::filter(PlotType == "Nest")
 
 #' Merge the filtered nests.veg with nests by nestid
-nests <- dplyr::right_join(nests, nests.veg.filtered, by = "NestID") 
+nests <- dplyr::right_join(nests, nests.veg.filtered, by = "NestID") %>%
+  dplyr::select(-CheckDate.x) %>%
+  dplyr::rename("NestFate" = NestFate.y)
 
 #' Rename and consolidate columns 
 nests <- nests %>%
-  dplyr::select(NestID, BandID, startI, endI, NestFate, PercWoody, PercGrassForb, AvgMaxVO, StemCount, Lat, Long) %>%
-  dplyr::rename("Visual Obstruction" = AvgMaxVO) %>%
-  dplyr::rename("Percent Woody Vegetation" = PercWoody) %>%
-  dplyr::rename("Percent Grass/Forb" = PercGrassForb) %>%
-  dplyr::rename("Basal Area" = StemCount)
+  dplyr::select(NestID, 
+                BandID, 
+                startI, 
+                endI,
+                NestFate, 
+                PercWoody,
+                PercGrassForb,
+                AvgVO,
+                AvgMaxVO, 
+                PercFern,
+                Lat,
+                Long) 
 
 #' Switch coding to UTF-8
 nests <- nests %>% 
   dplyr::mutate(across(everything(), ~ iconv(., to = "UTF-8")))
 
 #' Change columns to numeric
-nests$`Visual Obstruction` <- as.numeric(nests$`Visual Obstruction`)
-nests$`Percent Woody Vegetation` <- as.numeric(nests$`Percent Woody Vegetation`)
-nests$`Percent Grass/Forb` <- as.numeric(nests$`Percent Grass/Forb`)
-nests$`Basal Area` <- as.numeric(nests$`Basal Area`)
+nests$AvgVO <- as.numeric(nests$AvgVO)
+nests$AvgMaxVO <- as.numeric(nests$AvgMaxVO)
+nests$PercWoody <- as.numeric(nests$PercWoody)
+nests$PercGrassForb <- as.numeric(nests$PercGrassForb)
+nests$PercFern <- as.numeric(nests$PercFern)
 
 #' Scale continous predictors
 nests.scaled <- nests %>% 
-  dplyr::mutate(`Visual Obstruction` = scale(`Visual Obstruction`)) %>%
-  dplyr::mutate(`Percent Woody Vegetation` = scale(`Percent Woody Vegetation`)) %>%
-  dplyr::mutate(`Percent Grass/Forb` = scale(`Percent Grass/Forb`)) %>%
-  dplyr::mutate(`Basal Area` = scale(`Basal Area`))
+  dplyr::mutate(AvgVO = scale(AvgVO)) %>%
+  dplyr::mutate(PercWoody = scale(PercWoody)) %>%
+  dplyr::mutate(PercGrassForb = scale(PercGrassForb)) %>%
+  dplyr::mutate(AvgMaxVO = scale(AvgMaxVO)) %>%
+  dplyr::mutate(PercFern = scale(PercFern))
 nests.scaled
 
 #' Change columns back to numeric
-nests.scaled$`Visual Obstruction` <- as.numeric(nests.scaled$`Visual Obstruction`)
-nests.scaled$`Percent Woody Vegetation` <- as.numeric(nests.scaled$`Percent Woody Vegetation`)
-nests.scaled$`Percent Grass/Forb` <- as.numeric(nests.scaled$`Percent Grass/Forb`)
-nests.scaled$`Basal Area` <- as.numeric(nests.scaled$`Basal Area`)
+nests.scaled$AvgVO <- as.numeric(nests.scaled$AvgVO)
+nests.scaled$PercWoody <- as.numeric(nests.scaled$PercWoody)
+nests.scaled$PercGrassForb <- as.numeric(nests.scaled$PercGrassForb)
+nests.scaled$PercFern <- as.numeric(nests.scaled$PercFern)
+nests.scaled$AvgMaxVO <- as.numeric(nests.scaled$AvgMaxVO)
 nests.scaled
 
 
@@ -100,7 +107,6 @@ nests.scaled$Deciduous <- ifelse(nests.landcov$landuse == "Deciduous Forest", 1,
 nests.scaled$Evergreen <- ifelse(nests.landcov$landuse == "Evergreen Forest", 1, 0)
 nests.scaled$Mixed <- ifelse(nests.landcov$landuse == "Mixed Forest", 1, 0)
 nests.scaled$Grassland <- ifelse(nests.landcov$landuse == "Grassland/Shrub", 1, 0)
-nests.scaled$Other <- ifelse(nests.landcov$landuse == "Other", 1, 0)
 
 #' Extract distance from primary and secondary road structures
 nests.prim.roads <- terra::extract(pa.roads.prim, nests.sf) %>%
@@ -125,17 +131,17 @@ nests.scaled$Secondary <- as.numeric(nests.scaled$Secondary)
 nests.scaled$NestFate <- ifelse(nests.scaled$NestFate == "Hatched", 1, 0)
 
 
-####################################
+################################################################################
 ## Data Prep- Weather Covariates
 
 
 
 
-####################################
+################################################################################
 ## Data Prep- Individual Covariates
 
 #' Read in captures csv
-captures <- read_csv("Data Management/Csvs/Raw/captures.csv")
+captures <- read_csv("Data Management/Csvs/Raw/Captures/captures.csv")
 captures
  
 #' Filter data to include only hens 
@@ -175,7 +181,46 @@ nests.scaled <- nests.scaled %>%
 nests.scaled$`Nest Incubation Date` <- scale(nests.scaled$`Nest Incubation Date`)
 nests.scaled$`Nest Incubation Date` <- as.numeric(nests.scaled$`Nest Incubation Date`)
 print(nests.scaled$`Nest Incubation Date`)
-    
+
+
+################################################################################
+## Data Prep- Disease Covariates
+
+#' Read in raw virus csv
+virus <- read_csv("Data Management/Csvs/Raw/Disease/LPDV_REV/virus_raw.csv")
+virus
+
+#' Rename columns 
+virus <- virus %>%
+  dplyr::rename("BandID" = bandid)
+virus
+
+#' Filter data to contain only individuals within the nests.scaled df
+virus.filter <- virus %>%
+  dplyr::filter(BandID %in% nests.scaled$BandID)
+
+#' Read in raw parasite csv
+parasite <- read_csv("Data Management/Csvs/Raw/Disease/Parasites/parasite_raw.csv")
+parasite
+
+#' Rename columns 
+parasite <- parasite %>%
+  dplyr::rename("BandID" = bandid)
+parasite
+
+#' Filter to only include individua;s within nests.scaled df
+parasite.filter <- parasite %>%
+  dplyr::filter(BandID %in% nests.scaled$BandID)
+
+#' Left join filtered viral data and nests together
+nests.scaled <- left_join(virus.filter, nests.scaled)
+
+
+################################################################################
+## Data Prep- Behavior Covariates
+
+#' Time spent off the nest
+
 
 ################################################################################
 ################################################################################

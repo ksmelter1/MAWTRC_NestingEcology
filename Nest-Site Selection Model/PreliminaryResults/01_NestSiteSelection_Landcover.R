@@ -82,7 +82,7 @@ pa.nests.sf <- pa.nests %>%
 mapview(pa.nests.sf)
 
 #' Read in csv with incubation start and end dates
-nests.inc <- read_csv("Data Management/Csvs/Processed/IncubationDates/Draft2/20250124_NestAttempts_allbirds.csv")  
+nests.inc <- read_csv("Data Management/Csvs/Processed/IncubationDates/Draft3/20250131_NestAttempts_allbirds.csv")  
 nests.inc
 
 #' Merge the filtered nests.veg with nests by nestid
@@ -97,7 +97,7 @@ pa.nests.landcov <- cbind(pa.nests, landcov) %>%
   dplyr::rename("landuse" = Class)
 
 ################################################################################
-## Save RData file 20250118_Landcover.RData
+## Save RData file 20250131_Landcover.RData
 
 ################################################################################
 ################################################################################

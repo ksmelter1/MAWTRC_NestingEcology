@@ -34,8 +34,7 @@ load_packages <- function(package_name) {
 lapply(packages, load_packages)
 
 
-#' Visually checked and the projections look good
-load("Data Management/RData/Pre-Nesting Movement Model/RData Files/Draft2/20250125_Run2.RData") 
+load("Data Management/RData/Pre-Nesting Movement Model/RData Files/Draft3/20250131_Run3.RData") 
 
 rm(x)
 
@@ -120,6 +119,8 @@ X <- cbind(
   dat_2.ready$Agriculture,     # Agriculture
   dat_2.ready$Grassland)       # Grassland    
 
+rm(list = setdiff(ls(), c("dat_2.ready", "X")))
+
 
 ################################
 ## Nimble Model
@@ -177,15 +178,17 @@ nimbleMCMC_samples <- nimbleMCMC(
 
 end <- Sys.time()
 
+saveRDS(nimbleMCMC_samples, "20250202_MovementRun3.RDS")
+
 #' Print the means and standard deviations of the posterior samples for the beta coefficients
-colMeans(nimbleMCMC_samples[, 7762:7770])
-colSds(nimbleMCMC_samples[, 7762:7770])
+colMeans(nimbleMCMC_samples[, 63763:63770])
+colSds(nimbleMCMC_samples[, 63763:63770])
 
 #' View traceplots
-MCMCtrace(nimbleMCMC_samples, pdf = FALSE)
+#MCMCtrace(nimbleMCMC_samples, pdf = FALSE)
 
 #' Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
-beta_samples <- nimbleMCMC_samples[, 7762:7770]
+beta_samples <- nimbleMCMC_samples[, 63763:63770]
 
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
@@ -199,7 +202,9 @@ new_names <- c("Intercept", "Distance to Primary Road", "Distance to Secondary R
                "Grassland/Shrub")
 
 #' Assign the variable names to the columns of the beta_samples
-colnames(beta_samples) <- new_names
+colnames(samples_df) <- new_names
 
 #' View the renamed data frame
 head(samples_df)
+
+saveRDS(samples_df, "20250203_samples_df.RDS")

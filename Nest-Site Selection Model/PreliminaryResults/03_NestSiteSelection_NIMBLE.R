@@ -17,7 +17,8 @@
 packages <- c("matrixStats",
               "nimble",
               "MCMCvis",
-              "tidyverse")
+              "tidyverse",
+              "sf")
 
 #' Function to load a package or install it if not already installed
 load_packages <- function(package_name) {
@@ -31,51 +32,23 @@ load_packages <- function(package_name) {
 lapply(packages, load_packages)
 
 
-########################
+################################################################################
 ## Data Preparation 
 
 #' Load in RData
-load("Data Management/RData/Nest-Site Selection/Covs/Draft4/20240124_Covs.RData")
+load("Data Management/RData/Nest-Site Selection/Covs/Draft5/20250131_Covs.RData")
 
 
 #' Create nest.data object for models
 nest.data <- pa.nests.covs 
 str(pa.nests.covs)
 
-nest.data$WoodyType1 <- pa.nests.landcov$WoodyType1
-
-
-###############################
-## Prep Woody Type Predictors
-
-#' Stratify native versus invasive vegetation 
-nest.data$WoodyType1 <- case_when(
-  nest.data$WoodyType1 %in% c("Decid. Eric", 
-                            "decid. ericaceous",
-                            "Deciduous ericaceous",
-                            "evergreen shrub", 
-                            "Evrgrn Shrub", 
-                            "grpvns dwn/dead wood", 
-                            "Grpvines dwn/dead wood") ~ "Native",
-  nest.data$WoodyType1 %in% c("Non-native invasive", 
-                            "Non-native Invasive") ~ "Invasive",
-  TRUE ~ "Other"
-)
-
-
-#' Create dummy variables for microscale classification
-nest.data$Invasive <- ifelse(nest.data$WoodyType1 == "Invasive", 1, 0)
-nest.data$Native <- ifelse(nest.data$WoodyType1 == "Native", 1, 0)
-nest.data$Other <- ifelse(nest.data$WoodyType1 == "Other", 1, 0)
-glimpse(nest.data)
-
 
 #' Select columns of interest
 nest.data <- nest.data %>%
   dplyr::select(NestID, BandID, , PercGrassForb, PercWoody, AvgMaxVO,
                 Case, Developed, Deciduous, Mixed, Evergreen, Agriculture,
-                primary, secondary, StemCount, Native, Invasive, Other, Grassland) %>%
-  dplyr::rename("Basal" = StemCount) %>%
+                primary, secondary, StemCount, Grassland, AvgVO, PercFern) %>%
   dplyr::rename("Primary" = primary) %>%
   dplyr::rename("Secondary" = secondary)
 
@@ -90,18 +63,22 @@ nest.data <- nest.data %>%
   dplyr::mutate(AvgMaxVO = as.numeric(AvgMaxVO)) %>%
   dplyr::mutate(Primary = as.numeric(Primary)) %>%
   dplyr::mutate(Secondary = as.numeric(Secondary)) %>%
-  dplyr::mutate(Basal = as.numeric(Basal)) 
+  dplyr::mutate(PercFern = as.numeric(PercFern)) %>%
+  dplyr::mutate(AvgVO = as.numeric(AvgVO)) %>%
+  dplyr::mutate(StemCount = as.numeric(StemCount)) 
 glimpse(nest.data)
 str(nest.data)
 
 #' Scale predictors
 nest.data <- nest.data %>%
-  dplyr::mutate(Basal = scale(Basal)) %>%
+  dplyr::mutate(StemCount = scale(StemCount)) %>%
   dplyr::mutate(PercWoody = scale( PercWoody)) %>%
   dplyr::mutate(PercGrassForb = scale(PercGrassForb)) %>%
   dplyr::mutate(AvgMaxVO = scale(AvgMaxVO)) %>%
   dplyr::mutate(Primary = scale(Primary)) %>%
-  dplyr::mutate(Secondary = scale(Secondary)) 
+  dplyr::mutate(Secondary = scale(Secondary)) %>%
+  dplyr::mutate(PercFern = scale(PercFern)) %>%
+  dplyr::mutate(AvgVO = scale(AvgVO)) 
 str(nest.data)
 glimpse(nest.data)
 
@@ -112,22 +89,23 @@ nest.data <- nest.data %>%
   dplyr::mutate(AvgMaxVO = as.numeric(AvgMaxVO)) %>%
   dplyr::mutate(Primary = as.numeric(Primary)) %>%
   dplyr::mutate(Secondary = as.numeric(Secondary)) %>%
-  dplyr::mutate(Basal = as.numeric(Basal)) %>%
+  dplyr::mutate(PercFern = as.numeric(PercFern)) %>%
+  dplyr::mutate(AvgVO = as.numeric(AvgVO)) %>%
   dplyr::mutate(Developed = as.numeric(Developed)) %>%
   dplyr::mutate(Agriculture = as.numeric(Agriculture)) %>%
   dplyr::mutate(Deciduous = as.numeric(Deciduous)) %>%
   dplyr::mutate(Mixed = as.numeric(Mixed)) %>%
   dplyr::mutate(Evergreen = as.numeric(Evergreen)) %>%
-  dplyr::mutate(Grassland = as.numeric(Grassland))
+  dplyr::mutate(Grassland = as.numeric(Grassland)) %>%
+  dplyr::mutate(StemCount = as.numeric(StemCount))
 glimpse(nest.data)
 str(nest.data)
 
+
 #' Drop geometry column
 nest.data <- nest.data %>%
-  st_drop_geometry()
-
-#' Change case to numeric
-nest.data$Case <- as.numeric(nest.data$Case)
+  st_drop_geometry() %>%
+  dplyr::mutate(Case = as.numeric(Case))
 
 #' Order df by nestid
 nest.data <- nest.data[order(nest.data$NestID),]
@@ -160,11 +138,6 @@ nest.data.ready <- fill_na_with_zero(nest.data)
 summary(nest.data.ready)
 glimpse(nest.data.ready)
 
-#' Change columns to numeric 
-nest.data.ready <- nest.data.ready %>%
-  dplyr::mutate(Invasive = as.numeric(Invasive)) %>%
-  dplyr::mutate(Native = as.numeric(Native)) %>%
-  dplyr::mutate(Other = as.numeric(Other))
 
 ###############################################
 ## Nimble Model
@@ -188,8 +161,8 @@ nestmodel<-nimbleCode({
 )
 
 #' Model parameters
-X <- cbind(
-  rep(1, nrow(nest.data.ready)),  # Intercept (1)
+X<- cbind(
+  rep(1, nrow(nest.data.ready)),   # Intercept (1)
   nest.data.ready$Primary,         # Distance to Primary Road
   nest.data.ready$Secondary,       # Distance to Secondary Road
   nest.data.ready$Mixed,           # Mixed Forest
@@ -199,9 +172,8 @@ X <- cbind(
   nest.data.ready$AvgMaxVO,        # Visual Obstruction
   nest.data.ready$PercGrassForb,   # Percent Grass/Forb
   nest.data.ready$PercWoody,       # Percent Woody
-  nest.data.ready$Basal,           # Basal Area
-  nest.data.ready$Invasive,        # Invasive
-  nest.data.ready$Native,          # Native
+  nest.data.ready$AvgVO,           # Average Visual Obstruction
+  nest.data.ready$PercFern,        # Percent Fern
   nest.data.ready$Grassland        # Grassland/Shrub
 )
 
@@ -220,14 +192,14 @@ nimbleMCMC_samples <- nimbleMCMC(code = nestmodel,
                                  inits=Inits,
                                  data = Data,
                                  nburnin = 10000,
-                                 niter = 40000,
+                                 niter = 20000,
                                  thin=1)
 
-colMeans(nimbleMCMC_samples[,159:172])
-colSds(nimbleMCMC_samples[,159:172])
+colMeans(nimbleMCMC_samples[,171:183])
+colSds(nimbleMCMC_samples[,171:183])
 
 #' Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
-beta_samples <- nimbleMCMC_samples[, 159:172]
+beta_samples <- nimbleMCMC_samples[, 171:183]
 
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
@@ -238,9 +210,9 @@ samples_df <- as.data.frame(samples_matrix)
 #' Create a vector of new names
 new_names <- c("Intercept", "Distance to Primary Road", "Distance to Secondary Road", 
                "Mixed Forest", "Evergreen Forest", "Deciduous Forest", "Agriculture", 
-               "Visual Obstruction", "Percent Grass/Forb", 
-               "Percent Woody Vegetation", "Basal Area", "Invasive Woody Vegetation", 
-               "Native Woody Vegetation", "Grassland/Shrub")
+               "Aerial Visual Obstruction", "Percent Grass/Forb", 
+               "Percent Woody Vegetation", "Horizontal Visual Obstruction",
+               "Percent Fern", "Grassland/Shrub")
 
 #' Assign the variable names to the columns of the beta_samples
 colnames(samples_df) <- new_names

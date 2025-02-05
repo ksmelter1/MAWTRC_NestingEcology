@@ -9,13 +9,15 @@
 #'---
 #'  
 #' **Purpose**: This script produces coefficient and prediction plots of the model outputs
-#' **Last Updated**: 1/25/2025
+#' **Last Updated**: 2/3/2025
 
 ################################################################################
 ## Load Packages 
 
 #' Vector of package names
-packages <- c("tidyverse")
+packages <- c("tidyverse",
+              "ggpubr")
+
 
 #' Function to load a package or install it if not already installed
 load_packages <- function(package_name) {
@@ -33,7 +35,7 @@ lapply(packages, load_packages)
 ## Data Prep for Plots
 
 #' Load in RData
-load("Data Management/RData/Nest-Site Selection/ModelResults/PreliminaryResults/20250125_NimbleResults.RData")
+load("Data Management/RData/Nest-Site Selection/ModelResults/PreliminaryResults/20250202_NimbleResults.RData")
 
 #' Reshape the data into long format for ggplot
 samples_long <- samples_df %>%
@@ -41,39 +43,12 @@ samples_long <- samples_df %>%
                names_to = "parameter", 
                values_to = "estimate") 
 
-#' View the reshaped data
-head(samples_long)
-
-#' Calculate Bayesian credible intervals
-credible_intervals <- samples_long %>%
-  group_by(parameter) %>%
-  summarise(
-    lower = quantile(estimate, 0.05),  
-    upper = quantile(estimate, 0.95),   
-    .groups = 'drop'
-  )
-
-################################################################################
-## Density Plot
-
-#' Create plot
-p1.density <-ggplot(samples_long, aes(x = estimate, fill = parameter)) +
-  geom_density(alpha = 0.5) +  
-  facet_wrap(~parameter, scales = "free", ncol = 2) +  
-  labs(x = "Parameter Estimate", y = "Density") +
-  theme_minimal() +
-  theme(legend.position = "none") +
-  #' Add vertical lines for the 95% credible intervals
-  geom_vline(data = credible_intervals, aes(xintercept = lower), linetype = "dashed", color = "red") +
-  geom_vline(data = credible_intervals, aes(xintercept = upper), linetype = "dashed", color = "red")
-p1.density
-
 
 ################################################################################
 ## Data Prep for Beta Plot
 
 #' Calculate mean estimates for each parameter
-#' Calculate 95% credible intervals using quantiles
+#' Calculate 90% credible intervals using quantiles
 mean_estimates <- samples_long %>%
   dplyr::group_by(parameter) %>%
   summarise(
@@ -82,14 +57,14 @@ mean_estimates <- samples_long %>%
     upper = quantile(estimate, 0.95),  
     .groups = 'drop'
   ) %>%
-  dplyr::filter(parameter != "Intercept")
+  dplyr::filter(parameter != "Intercept") 
 mean_estimates
 
 mean_estimates <- mean_estimates %>%
   mutate(Scale = case_when(
-    parameter %in% c("Percent Grass/Forb", "Percent Woody Vegetation", "Visual Obstruction", 
-                     "Basal Area", "Native Woody Vegetation", "Invasive Woody Vegetation") ~ "Nest-Level",
-    TRUE ~ "Landscape-Level"
+    parameter %in% c("Percent Grass/Forb", "Percent Woody Vegetation", "Horizontal Visual Obstruction", 
+                     "Aerial Visual Obstruction", "Percent Fern") ~ "Nest",
+    TRUE ~ "Landscape"
   ))
 
 mean_estimates
@@ -98,125 +73,104 @@ mean_estimates
 #' Filter out the intercept
 mean_estimates <- mean_estimates %>%
   dplyr::mutate(parameter = factor(parameter, 
-                            levels = c("Visual Obstruction",
+                            levels = c("Horizontal Visual Obstruction",
+                                       "Aerial Visual Obstruction",
+                                       "Woody Stem Count",
                                        "Percent Woody Vegetation", 
                                        "Percent Grass/Forb",
-                                       "Native Woody Vegetation",
-                                       "Invasive Woody Vegetation",
-                                       "Basal Area",
+                                       "Percent Fern",
                                        "Grassland/Shrub",
                                        "Mixed Forest",
                                        "Evergreen Forest",
                                        "Deciduous Forest",
+                                       "Agriculture",
                                        "Distance to Primary Road",
-                                       "Distance to Secondary Road",
-                                       "Agriculture"))) 
+                                       "Distance to Secondary Road"
+                                      ))) 
 mean_estimates
 
 
 ################################################################################
-## Beta Plot 
+## Betas Plot 
 
 #' Beta estimates and associated 95% credible intervals 
-#' Macroscale and Microscale predictors
+#' Nest anc Landscape-scale predictors
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5) +  # Points for the mean estimate 
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  # Error bars for credible intervals
-  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  # Horizontal line at 0
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
   labs(x = "Parameter", y = "Beta Estimate") +
   theme_minimal() + 
   coord_flip()+
-  scale_color_manual(values = c("Nest-Level" = "#A44200", "Landscape-Level" = "#D65F5F")) +  # Set color for Microscale, Macroscale
-  scale_shape_manual(values = c("Nest-Level" = 17, "Landscape-Level" = 16))+  # Set shapes for Microscale, Macroscale
-  theme(
-    axis.title.x = element_text(margin = margin(t = 10))  # Pad the x-axis label by 10 points (~0.1 inch)
-  )
+  scale_color_manual(values = c("Nest" = "#A44200", "Landscape" = "#D65F5F")) +  
+  scale_shape_manual(values = c("Nest" = 17, "Landscape" = 16))+  
+  theme(axis.title.x = element_text(margin = margin(t = 10)))
   p2.betas
-  
-  #' Save the combined microscale plot as a PNG image
-  ggsave("01_BetaEstimates_90CIs.png", 
-         p2.betas, 
-         path = "Data Management/Figures/Nest-Site Selection Process/Beta Outputs/",
-         width = 12, 
-         height = 10,
-         bg = "white")
 
 
-#########################################################################
+################################################################################
 ## Prediction Plots
  
-#' Basal Area
-CIs <- matrix(quantile(samples_df[,11], c(0.05, 0.5, 0.95)), nrow=1)
+#' Agriculture
+CIs <- matrix(quantile(samples_df[,7], c(0.05, 0.5, 0.95)), nrow=1)
 pred.seq<-seq(-1,1,0.1)
 pred.response.log<-pred.seq%*%CIs
 pred.response<-data.frame(exp(pred.response.log))
 colnames(pred.response)<-c("lCI","median","uCI")
-
 p1.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
- geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#D65F5F", linetype=2, alpha=0.1) +
 theme_minimal() +
-xlab("Basal Area") +
+xlab("Agriculture") +
 ylab("Relative Probability of Use") +
-ylim(0, 3) +
 theme(
 axis.title.x = element_text(margin = margin(t = 10)), 
-axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
+axis.title.y = element_blank())
 p1.predict
 
-
-#' Invasive Woody Vegetation
-CIs <- matrix(quantile(samples_df[,12], c(0.05, 0.5, 0.95)), nrow=1)
-pred.seq<-seq(-1,1,0.1)
-pred.response.log<-pred.seq%*%CIs
-pred.response<-data.frame(exp(pred.response.log))
-colnames(pred.response)<-c("lCI","median","uCI")
-
-p2.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
-  theme_minimal() +
-  xlab("Invasive Woody Vegetation") +
-  ylab("Relative Probability of Use") +
-  theme(
-    axis.title.x = element_text(margin = margin(t = 10)), 
-    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
-p2.predict
-
-#' Percent Woody Vegetation
-CIs <- matrix(quantile(samples_df[,10], c(0.05, 0.5, 0.95)), nrow=1)
-pred.seq<-seq(-1,1,0.1)
-pred.response.log<-pred.seq%*%CIs
-pred.response<-data.frame(exp(pred.response.log))
-colnames(pred.response)<-c("lCI","median","uCI")
-
-p3.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
-  theme_minimal() +
-  xlab("Percent Woody Vegetation") +
-  ylab("Relative Probability of Use") +
-  ylim(0,3) +
-  theme(
-    axis.title.x = element_text(margin = margin(t = 10)), 
-    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
-p3.predict
-
-
-#' Visual Obstruction
+#' Max Height Visual Obstruction
 CIs <- matrix(quantile(samples_df[,8], c(0.05, 0.5, 0.95)), nrow=1)
 pred.seq<-seq(-1,1,0.1)
 pred.response.log<-pred.seq%*%CIs
 pred.response<-data.frame(exp(pred.response.log))
 colnames(pred.response)<-c("lCI","median","uCI")
-
-p4.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), linetype=2, alpha=0.1) +
+p2.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#A44200", linetype=2, alpha=0.1) +
   theme_minimal() +
-  xlab("Visual Obstruction") +
+  xlab("Aerial Visual Obstruction") +
   ylab("Relative Probability of Use") +
   theme(
     axis.title.x = element_text(margin = margin(t = 10)), 
-    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
-p4.predict
+    axis.title.y = element_blank())
+p2.predict
+
+
+#' Horizontal Visual Obstruction
+CIs <- matrix(quantile(samples_df[,11], c(0.05, 0.5, 0.95)), nrow=1)
+pred.seq<-seq(-1,1,0.1)
+pred.response.log<-pred.seq%*%CIs
+pred.response<-data.frame(exp(pred.response.log))
+colnames(pred.response)<-c("lCI","median","uCI")
+p3.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#A44200", linetype=2, alpha=0.1) +
+  theme_minimal() +
+  xlab("Horizontal Visual Obstruction") +
+  ylab("Relative Probability of Use") +
+  theme(
+    axis.title.x = element_text(margin = margin(t = 10)), 
+    axis.title.y = element_blank())
+p3.predict
+
+
+################################################################################
+## Create panels
+
+
+plot_combined <- ggarrange(p1.predict, NULL, 
+                           p2.predict, p3.predict, 
+                           nrow = 2, ncol = 2) %>% 
+  annotate_figure(left = text_grob("Relative Probability of Use", rot = 90))
+plot_combined
+
 
 ################################################################################
 ################################################################################
-

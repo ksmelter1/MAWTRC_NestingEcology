@@ -30,22 +30,27 @@ nests.scaled$startI <- as.Date(nests.scaled$startI)
 nests.scaled$endI <- as.Date(nests.scaled$endI)
 
 #' Create a sequence of all unique dates between the min start and max end date
+nests.scaled %>% group_by(NestYr) %>% summarise(mindate = min(startI),
+                                                maxdate = max(endI))
+
 inc.dates <- sort(unique(c(nests.scaled$startI, nests.scaled$endI)))
-inc.dates <- seq(inc.dates[1], inc.dates[length(inc.dates)], by = 1)
+inc.dates <- seq(as.Date("2022-04-22"), as.Date("2022-09-16"), by = 1)
+inc.dates <- format(inc.dates, "%m-%d")
+inc.dates
 
 #' Calculate the number of encounter days
 occs <- length(inc.dates)
 
 #' Initialize variables
-first <- last <- array(NA, dim = nrow(nests.scaled))
+first <- last <- array(NA, dim = length(inc.dates))
 surv.caps <- matrix(data = NA, nrow = nrow(nests.scaled), ncol = occs)
 
 #' Create encounter histories within surv.caps
 #' If a nest fails it gets a zero at the end 
 #' If it reaches hatch it ends with a 1
-for(i in 1:nrow(nests.scaled)){ #for each individual 
-  first[i] <- which(inc.dates == nests.scaled$startI[i]) 
-  last[i] <- which(inc.dates == nests.scaled$endI[i]) 
+for(i in 1:nrow(nests.scaled)){ 
+  first[i] <- which(inc.dates == format(nests.scaled$startI[i], "%m-%d")) 
+  last[i] <- which(inc.dates == format(nests.scaled$endI[i], "%m-%d")) 
   surv.caps[i,first[i]:last[i]] <- 1 
   if(nests.scaled$NestFate[i] == 0)
   {surv.caps[i,last[i]] <- 0} 
@@ -53,6 +58,11 @@ for(i in 1:nrow(nests.scaled)){ #for each individual
 
 #' Check work on first individual
 surv.caps[1,]
+
+surv.caps = as.data.frame(surv.caps)
+colnames(surv.caps) <- inc.dates
+#surv.caps$Year = nests.scaled$NestYr
+
 
 
 ##################################################
@@ -95,6 +105,7 @@ weather.array[1,1,] # Nest 1, day 1, all cov
 weather.array[1,,1] # Nest 1, all days, cov 1
 weather.array[,1,1] # All nests, day 1, cov 1 
 
+
 ###################################################
 ## Compile Parameters into matrix format
 
@@ -116,10 +127,10 @@ summary(nests.ready)
 #' Model parameters
 X <- cbind(
   rep(1, nrow(nests.ready)),               # Intercept (1)
-  nests.ready$`Visual Obstruction`,        # Visual Obstruction
-  nests.ready$`Percent Woody Vegetation`,  # Percent Woody Vegetation
-  nests.ready$`Percent Grass/Forb`,        # Percent Grass Forb
-  nests.ready$`Basal Area`,                # Basal Area
+  nests.ready$AvgVO,                       #  Horizontal Visual Obstruction
+  nests.ready$PercWoody,                   # Percent Woody Vegetation
+  nests.ready$PercGrassForb,               # Percent Grass Forb
+  nests.ready$AvgMaxVO,                    # Aerial Visual Obstruction
   nests.ready$Primary,                     # Distance to Primary Road
   nests.ready$Secondary,                   # Distance to Secondary Road
   nests.ready$Mixed,                       # Mixed Forest
@@ -128,7 +139,9 @@ X <- cbind(
   nests.ready$Agriculture,                 # Agriculture
   nests.ready$Grassland,                   # Grassland
   nests.ready$`Nest Incubation Date`,      # Nest Incubation Date
-  nests.ready$age                          # Age Class
+  nests.ready$age,                         # Age Class
+  nests.ready$LPDV,                        # LPDV Infection Status
+  nests.ready$PercFern                     # Percent Fern
 )   
 
 
@@ -201,19 +214,31 @@ v = colMeans(nimbleMCMC_samples)
 MCMCtrace(nimbleMCMC_samples, pdf = FALSE)
 
 #' Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
-beta_samples <- nimbleMCMC_samples[, 1:14]
+beta_samples <- nimbleMCMC_samples[, 1:16]
 
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
 
 # Convert the matrix to a data frame
-samples_df <- as.data.frame(samples_matrix) 
+samples_df <- as.data.frame(samples_matrix)
 
 #' Create a vector of new names
-new_names <- c("Intercept", "Distance to Primary Road", "Distance to Secondary Road", 
-               "Mixed Forest", "Evergreen Forest", "Deciduous Forest", "Agriculture", 
-               "Visual Obstruction", "Percent Grass/Forb", 
-               "Percent Woody Vegetation", "Basal Area", "Grassland/Shrub", "Nest Incubation Date", "Age Class")
+new_names <- c("Intercept", 
+               "Horizontal Visual Obstruction",
+               "Percent Woody Vegetation",
+               "Percent Grass/Forb",
+               "Aerial Visual Obstruction",
+               "Distance to Primary Road",
+               "Distance to Secondary Road",
+               "Mixed Forest",
+               "Evergreen Forest",
+               "Deciduous Forest",
+               "Agriculture",
+               "Grassland/Shrub",
+               "Nest Incubation Date",
+               "Age Class",
+               "LPDV",
+               "Percent Fern")
 
 #' Assign the variable names to the columns of the beta_samples
 colnames(samples_df) <- new_names
@@ -221,7 +246,8 @@ colnames(samples_df) <- new_names
 #' View the renamed data frame
 head(samples_df)
 
-############################
+
+################################################################################
 ## Data Prep for Beta Plot
 
 #' Reshape the data into long format for ggplot
@@ -257,8 +283,11 @@ mean_estimates
 
 mean_estimates <- mean_estimates %>%
   mutate(Scale = case_when(
-    parameter %in% c("Percent Grass/Forb", "Percent Woody Vegetation", "Visual Obstruction", 
-                     "Basal Area", "Native Woody Vegetation", "Invasive Woody Vegetation") ~ "Nest-Level",
+    parameter %in% c("Percent Grass/Forb", 
+                     "Percent Woody Vegetation", 
+                     "Aerial Visual Obstruction",
+                     "Horizontal Visual Obstruction",
+                     "Percent Fern") ~ "Nest-Level",
     parameter %in% c( "Grassland/Shrub",
                       "Mixed Forest",
                       "Evergreen Forest",
@@ -280,33 +309,48 @@ mean_estimates <- mean_estimates %>%
                                      "Mixed Forest",
                                      "Evergreen Forest",
                                      "Deciduous Forest",
+                                     "Agriculture",
                                      "Distance to Primary Road",
                                      "Distance to Secondary Road",
-                                     "Agriculture",
+                                     "Aerial Visual Obstruction",
+                                     "Horizontal Visual Obstruction",
+                                     "Percent Fern",
                                      "Visual Obstruction",
                                      "Percent Woody Vegetation", 
                                      "Percent Grass/Forb",
                                      "Basal Area",
+                                     "LPDV",
                                      "Nest Incubation Date",
-                                     "Age Class"))) 
+                                     "Age Class")))
 mean_estimates
 
-#########################
+################################################################################
 ## Beta Plot 
 
-#' Beta estimates and associated 95% credible intervals 
-#' Macroscale and Microscale predictors
-p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
-  geom_point(size = 3.5) +  # Points for the mean estimate 
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  # Error bars for credible intervals
-  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  # Horizontal line at 0
+#' Beta estimates and associated 90% credible intervals 
+p2.betas <- ggplot(mean_estimates, 
+                   aes(x = parameter, 
+                       y = mean_estimate, 
+                       color = Scale, 
+                       shape = Scale)) +
+  geom_point(size = 3.5) +  
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
   labs(x = "Parameter", y = "Beta Estimate") +
   theme_minimal() + 
   coord_flip()+
-  scale_color_manual(values = c("Individual" = "#5f0f40", "Nest-Level" = "#A44200", "Landscape-Level" = "#D65F5F")) +  # Set color for Microscale, Macroscale
-  scale_shape_manual(values = c("Individual" = 15, "Nest-Level" = 17, "Landscape-Level" = 16))+  # Set shapes for Microscale, Macroscale
+  scale_color_manual(values = c("Individual" = "#DA6509",
+                                "Nest-Level" = "#A44200",
+                                "Landscape-Level" = "#D65F5F")) +  
+  scale_shape_manual(values = c("Individual" = 15, 
+                                "Nest-Level" = 17,
+                                "Landscape-Level" = 16))+  
   theme(
-    axis.title.x = element_text(margin = margin(t = 10))  # Pad the x-axis label by 10 points (~0.1 inch)
+    axis.title.x = element_text(margin = margin(t = 10)),
+    axis.title.y = element_text(margin = margin(r = 12))
+    
   )
-
 p2.betas
+
+
+
