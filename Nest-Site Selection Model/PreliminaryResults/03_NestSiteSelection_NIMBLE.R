@@ -36,7 +36,7 @@ lapply(packages, load_packages)
 ## Data Preparation 
 
 #' Load in RData
-load("Data Management/RData/Nest-Site Selection/Covs/Draft5/20250131_Covs.RData")
+load("Data Management/RData/Nest-Site Selection/Covs/Draft6/20250206_Covs.RData")
 
 
 #' Create nest.data object for models
@@ -47,8 +47,9 @@ str(pa.nests.covs)
 #' Select columns of interest
 nest.data <- nest.data %>%
   dplyr::select(NestID, BandID, , PercGrassForb, PercWoody, AvgMaxVO,
-                Case, Developed, Deciduous, Mixed, Evergreen, Agriculture,
-                primary, secondary, StemCount, Grassland, AvgVO, PercFern) %>%
+                Case, Developed, Deciduous, Mixed, Evergreen, Agriculture, 
+                primary, secondary, StemCount, Grassland, AvgVO, Water,
+                PercFern) %>%
   dplyr::rename("Primary" = primary) %>%
   dplyr::rename("Secondary" = secondary)
 
@@ -97,6 +98,7 @@ nest.data <- nest.data %>%
   dplyr::mutate(Mixed = as.numeric(Mixed)) %>%
   dplyr::mutate(Evergreen = as.numeric(Evergreen)) %>%
   dplyr::mutate(Grassland = as.numeric(Grassland)) %>%
+  dplyr::mutate(Water = as.numeric(Water)) %>%
   dplyr::mutate(StemCount = as.numeric(StemCount))
 glimpse(nest.data)
 str(nest.data)
@@ -161,6 +163,7 @@ nestmodel<-nimbleCode({
 )
 
 #' Model parameters
+#' Water is not included in the model because no PA birds used it
 X<- cbind(
   rep(1, nrow(nest.data.ready)),   # Intercept (1)
   nest.data.ready$Primary,         # Distance to Primary Road

@@ -250,7 +250,7 @@ colSds(nimbleMCMC_samples[,171:181])
 #' View traceplots
 MCMCtrace(nimbleMCMC_samples, pdf = F)
 
-#' Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
+#' Extract the posterior samples for the 'beta' parameters (columns 171 to 181)
 beta_samples <- nimbleMCMC_samples[, 171:181]
 
 # Convert mcmc.list to matrix
@@ -326,20 +326,24 @@ mean_estimates
 ################################################################################
 ## Betas Plot 
 
-#' Beta estimates and associated 95% credible intervals 
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
   labs(x = "Parameter", y = "Beta Estimate") +
   theme_minimal() + 
-  coord_flip()+
+  coord_flip() +
   scale_color_manual(values = c("Nest" = "#A44200")) +  
-  scale_shape_manual(values = c("Nest" = 17))+  
+  scale_shape_manual(values = c("Nest" = 17)) +  
   theme(
-    axis.title.x = element_text(margin = margin(t = 10))  
+    axis.title.x = element_text(margin = margin(t = 10), hjust = 0.42),  
+    axis.title.y = element_blank(),
+    legend.position = "none"
   )
+
 p2.betas
+
+
 
 
 ################################################################################

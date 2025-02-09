@@ -61,11 +61,15 @@ terra::values(pa.nlcd) <- ifelse(terra::values(pa.nlcd) %in% c(21:24), yes = "De
                                  no = ifelse(terra::values(pa.nlcd) %in% c(41), yes = " Deciduous Forest", ## Deciduous
                                              no= ifelse(terra::values(pa.nlcd) %in% c(42), yes= "Evergreen Forest", ## Evergreen Forest
                                                         no= ifelse(terra::values(pa.nlcd) %in% c(43), yes= "Mixed Forest", ## Mixed Forest
-                                                               no= ifelse(terra::values(pa.nlcd) %in% c(52,71), yes= "Grassland/Shrub", ## Grassland/Herbacaeous, Shrub/Scrub  
+                                                               no= ifelse(terra::values(pa.nlcd) %in% c(31, 51:52,71:74), yes= "Grassland/Shrub", ## Grassland/Herbacaeous, Shrub/Scrub  
                                                                    no= ifelse(terra::values(pa.nlcd) %in% c(81:83), yes= "Agriculture", ## Pasture, Cultivated Crops
-                                                                              no= "Other")))))) #Everything else
+                                                                              no= "Water")))))) # All water categories
 #' Check the reclassified values 
 unique(terra::values(pa.nlcd))
+plot(pa.nlcd)
+
+writeRaster(pa.nlcd, "Data Management/Rasters/nlcd/pa.nlcd.tif", overwrite = T)
+
 
 ################################################################################
 ## Load in NLCD

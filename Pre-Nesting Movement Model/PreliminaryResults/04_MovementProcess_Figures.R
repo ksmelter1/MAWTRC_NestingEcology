@@ -8,9 +8,9 @@
 #'---
 #'  
 #' **Purpose**: This script creates beta estimate and prediction plots similar to the nest-site selection model
-#' **Last Updated**: 1/20/25
+#' **Last Updated**: 2/9/25
 
-####################
+################################################################################
 ## Load Packages 
 
 #' Vector of package names
@@ -31,10 +31,15 @@ load_packages <- function(package_name) {
 lapply(packages, load_packages)
 
 
-##########################
-## Data Prep for Plots
+################################################################################
+## Read in Data
 
-samples_df <- readRDS("Data Management/RData/Pre-Nesting Movement Model/RData Files/Draft3/20250203_samples_df.RDS")
+
+samples_df <- readRDS("Data Management/RData/Pre-Nesting Movement Model/RData Files/Draft4/20250209_samples_df.RDS")
+
+
+################################################################################
+## Data Prep for Beta Plot
 
 #' Reshape the data into long format for ggplot
 samples_long <- samples_df %>%
@@ -53,24 +58,6 @@ credible_intervals <- samples_long %>%
     upper = quantile(estimate, 0.95), 
     .groups = 'drop'
   )
-
-######################
-## Density Plot
-
-#' Create plot
-p1.density <-ggplot(samples_long, aes(x = estimate, fill = parameter)) +
-  geom_density(alpha = 0.5) +  # Density plot with transparency
-  facet_wrap(~parameter, scales = "free", ncol = 2) +  # Create separate panels for each parameter
-  labs(x = "Parameter Estimate", y = "Density") +
-  theme_minimal() +
-  theme(legend.position = "none") +
-  #' Add vertical lines for the 95% credible intervals
-  geom_vline(data = credible_intervals, aes(xintercept = lower), linetype = "dashed", color = "red") +
-  geom_vline(data = credible_intervals, aes(xintercept = upper), linetype = "dashed", color = "red")
-p1.density
-
-############################
-## Data Prep for Beta Plot
 
 #' Calculate mean estimates for each parameter
 #' Calculate 95% credible intervals using quantiles
@@ -96,7 +83,8 @@ mean_estimates <- mean_estimates %>%
 #' Filter out the intercept
 mean_estimates <- mean_estimates %>%
   dplyr::mutate(parameter = factor(parameter, 
-                                   levels = c("Grassland/Shrub",
+                                   levels = c("Water",
+                                              "Grassland/Shrub",
                                               "Mixed Forest",
                                               "Evergreen Forest",
                                               "Deciduous Forest",
@@ -112,16 +100,18 @@ mean_estimates
 #' Beta estimates and associated 95% credible intervals 
 #' Macroscale and Microscale predictors
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
-  geom_point(size = 3.5) +  # Points for the mean estimate 
-  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  # Error bars for credible intervals
-  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  # Horizontal line at 0
+  geom_point(size = 3.5) +  
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
   labs(x = "Parameter", y = "Beta Estimate") +
   theme_minimal() + 
   coord_flip()+
-  scale_color_manual(values = c("Landscape" = "#D65F5F")) +  # Set color for Microscale, Macroscale
-  scale_shape_manual(values = c("Landscape" = 16))+  # Set shapes for Microscale, Macroscale
+  scale_color_manual(values = c("Landscape" = "#D65F5F")) +  
+  scale_shape_manual(values = c("Landscape" = 16))+  
   theme(
-    axis.title.x = element_text(margin = margin(t = 10))  # Pad the x-axis label by 10 points (~0.1 inch)
+    axis.title.x = element_text(margin = margin(t = 10), hjust = 0.45),  
+    axis.title.y = element_blank(),
+    legend.position = "none"
   )
 p2.betas
 
@@ -152,118 +142,3 @@ p1.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() 
     axis.title.x = element_text(margin = margin(t = 10)), 
     axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
 p1.predict
-
-#' Mixed Forest
-CIs <- matrix(quantile(samples_df[,4], c(0.05, 0.5, 0.95)), nrow=1)
-pred.seq<-seq(-1,1,0.1)
-pred.response.log<-pred.seq%*%CIs
-pred.response<-data.frame(exp(pred.response.log))
-colnames(pred.response)<-c("lCI","median","uCI")
-p3.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#D65F5F", linetype=2, alpha=0.1) +
-  theme_minimal() +
-  xlab("Mixed Forest") +
-  ylab("Relative Probability of Use") +
-  theme(
-    axis.title.x = element_text(margin = margin(t = 10)), 
-    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
-p3.predict
-
-
-#' Evergreen Forest
-CIs <- matrix(quantile(samples_df[,5], c(0.05, 0.5, 0.95)), nrow=1)
-pred.seq<-seq(-1,1,0.1)
-pred.response.log<-pred.seq%*%CIs
-pred.response<-data.frame(exp(pred.response.log))
-colnames(pred.response)<-c("lCI","median","uCI")
-p4.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#D65F5F", linetype=2, alpha=0.1) +
-  theme_minimal() +
-  xlab("Evergreen Forest") +
-  ylab("Relative Probability of Use") +
-  theme(
-    axis.title.x = element_text(margin = margin(t = 10)), 
-    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
-p4.predict
-
-
-#' Deciduous Forest
-CIs <- matrix(quantile(samples_df[,6], c(0.05, 0.5, 0.95)), nrow=1)
-pred.seq<-seq(-1,1,0.1)
-pred.response.log<-pred.seq%*%CIs
-pred.response<-data.frame(exp(pred.response.log))
-colnames(pred.response)<-c("lCI","median","uCI")
-p5.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#D65F5F", linetype=2, alpha=0.1) +
-  theme_minimal() +
-  xlab("Deciduous Forest") +
-  ylab("Relative Probability of Use") +
-  theme(
-    axis.title.x = element_text(margin = margin(t = 10)), 
-    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
-p5.predict
-
-
-#' Agriculture
-CIs <- matrix(quantile(samples_df[,7], c(0.05, 0.5, 0.95)), nrow=1)
-pred.seq<-seq(-1,1,0.1)
-pred.response.log<-pred.seq%*%CIs
-pred.response<-data.frame(exp(pred.response.log))
-colnames(pred.response)<-c("lCI","median","uCI")
-p6.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#D65F5F", linetype=2, alpha=0.1) +
-  theme_minimal() +
-  xlab("Agriculture") +
-  ylab("Relative Probability of Use") +
-  theme(
-    axis.title.x = element_text(margin = margin(t = 10)), 
-    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
-p6.predict
-
-
-#' Grassland/Shrub
-CIs <- matrix(quantile(samples_df[,8], c(0.05, 0.5, 0.95)), nrow=1)
-pred.seq<-seq(-1,1,0.1)
-pred.response.log<-pred.seq%*%CIs
-pred.response<-data.frame(exp(pred.response.log))
-colnames(pred.response)<-c("lCI","median","uCI")
-p7.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#D65F5F", linetype=2, alpha=0.1) +
-  theme_minimal() +
-  ylab("Relative Probability of Use") +
-  xlab("Grassland/Shrub") +
-  theme(
-    axis.title.x = element_text(margin = margin(t = 10)), 
-    axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
-p7.predict
-
-
-#########################
-## Create panels
-
-#' Define a theme to remove y-axis title, labels, and ticks
-remove_y_axis <- theme(
-  axis.title.y = element_blank())
-
-#' Adjust the y-axis title margin for p4.predict
-p4.predict <- p4.predict + theme(
-  axis.title.y = element_text(margin = margin(r = 20)))
-
-#' Adjust the y-axis title margin for p4.predict
-p1.predict <- p1.predict + theme(
-  axis.title.y = element_text(margin = margin(r = 20)))
-
-#' Adjust the y-axis title margin for p4.predict
-p6.predict <- p6.predict + theme(
-  axis.title.y = element_text(margin = margin(r = 20)))
-
-#' Apply the theme to the right-hand plots
-p1.predict <- p1.predict + remove_y_axis
-p3.predict <- p3.predict + remove_y_axis
-p5.predict <- p5.predict + remove_y_axis
-p6.predict <- p6.predict + remove_y_axis
-p7.predict <- p7.predict + remove_y_axis
-
-#' Arrange the plots
-grid.arrange(p1.predict, p3.predict, p4.predict, p5.predict, p6.predict, p7.predict,
-             ncol = 2, nrow = 3)

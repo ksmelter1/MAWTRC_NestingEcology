@@ -40,7 +40,7 @@ lapply(packages, load_packages)
 load("Data Management/RData/Pre-Nesting Movement Model/RData Files/Draft3/20250131_Movebank.RData")
 
 #' Load NLCD Raster
-pa.nlcd <- terra::rast("Data Management/Rasters/nlcd/paNLCD.tiff")
+pa.nlcd <- terra::rast("Data Management/Rasters/nlcd/pa.nlcd.tif")
 
 
 #####################
@@ -148,6 +148,7 @@ glimpse(random_steps)
 #' Check
 which(random_steps$step_id_==5)
 table(random_steps$case_)
+table(random_steps$landuse)
 
 #' Create dummy variables for land cover classification
 random_steps$Agriculture <- ifelse(random_steps$landuse == "Agriculture", 1, 0)
@@ -156,7 +157,7 @@ random_steps$Deciduous <- ifelse(random_steps$landuse == "Deciduous Forest", 1, 
 random_steps$Evergreen <- ifelse(random_steps$landuse == "Evergreen Forest", 1, 0)
 random_steps$Mixed <- ifelse(random_steps$landuse == "Mixed Forest", 1, 0)
 random_steps$Grassland <- ifelse(random_steps$landuse == "Grassland/Shrub", 1, 0)
-random_steps$Other <- ifelse(random_steps$landuse == "Other", 1, 0)
+random_steps$Water <- ifelse(random_steps$landuse == "Water", 1, 0)
 
 #' Change case to numeric
 random_steps$case_ <- as.numeric(random_steps$case_)

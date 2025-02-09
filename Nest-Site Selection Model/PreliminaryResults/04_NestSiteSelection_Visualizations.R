@@ -35,17 +35,18 @@ lapply(packages, load_packages)
 ## Data Prep for Plots
 
 #' Load in RData
-load("Data Management/RData/Nest-Site Selection/ModelResults/PreliminaryResults/20250202_NimbleResults.RData")
+load("Data Management/RData/Nest-Site Selection/ModelResults/PreliminaryResults/20250206_NimbleResults.RData")
+
+
+
+################################################################################
+## Data Prep for Beta Plot
 
 #' Reshape the data into long format for ggplot
 samples_long <- samples_df %>%
   pivot_longer(cols = everything(), 
                names_to = "parameter", 
                values_to = "estimate") 
-
-
-################################################################################
-## Data Prep for Beta Plot
 
 #' Calculate mean estimates for each parameter
 #' Calculate 90% credible intervals using quantiles
@@ -93,39 +94,24 @@ mean_estimates
 ################################################################################
 ## Betas Plot 
 
-#' Beta estimates and associated 95% credible intervals 
-#' Nest anc Landscape-scale predictors
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
-  geom_point(size = 3.5) +  # Points for the mean estimate 
+  geom_point(size = 3.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
-  labs(x = "Parameter", y = "Beta Estimate") +
+  ylab("Beta Estimate") +
   theme_minimal() + 
-  coord_flip()+
+  coord_flip() +
   scale_color_manual(values = c("Nest" = "#A44200", "Landscape" = "#D65F5F")) +  
-  scale_shape_manual(values = c("Nest" = 17, "Landscape" = 16))+  
-  theme(axis.title.x = element_text(margin = margin(t = 10)))
-  p2.betas
+  scale_shape_manual(values = c("Nest" = 17, "Landscape" = 16)) +  
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(hjust = 0.38),  
+        legend.position = "none")  
+
+p2.betas
 
 
 ################################################################################
 ## Prediction Plots
- 
-#' Agriculture
-CIs <- matrix(quantile(samples_df[,7], c(0.05, 0.5, 0.95)), nrow=1)
-pred.seq<-seq(-1,1,0.1)
-pred.response.log<-pred.seq%*%CIs
-pred.response<-data.frame(exp(pred.response.log))
-colnames(pred.response)<-c("lCI","median","uCI")
-p1.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#D65F5F", linetype=2, alpha=0.1) +
-theme_minimal() +
-xlab("Agriculture") +
-ylab("Relative Probability of Use") +
-theme(
-axis.title.x = element_text(margin = margin(t = 10)), 
-axis.title.y = element_blank())
-p1.predict
 
 #' Max Height Visual Obstruction
 CIs <- matrix(quantile(samples_df[,8], c(0.05, 0.5, 0.95)), nrow=1)
@@ -165,9 +151,8 @@ p3.predict
 ## Create panels
 
 
-plot_combined <- ggarrange(p1.predict, NULL, 
-                           p2.predict, p3.predict, 
-                           nrow = 2, ncol = 2) %>% 
+plot_combined <- ggarrange(p2.predict, p3.predict, 
+                           nrow = 1, ncol = 2) %>% 
   annotate_figure(left = text_grob("Relative Probability of Use", rot = 90))
 plot_combined
 

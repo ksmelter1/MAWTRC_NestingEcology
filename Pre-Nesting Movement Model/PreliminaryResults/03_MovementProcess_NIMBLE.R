@@ -34,7 +34,7 @@ load_packages <- function(package_name) {
 lapply(packages, load_packages)
 
 
-load("Data Management/RData/Pre-Nesting Movement Model/RData Files/Draft3/20250131_Run3.RData") 
+load("Data Management/RData/Pre-Nesting Movement Model/RData Files/Draft4/20250208_CovsReady.RData") 
 
 rm(x)
 
@@ -117,7 +117,8 @@ X <- cbind(
   dat_2.ready$Evergreen,       # Evergreen Forest
   dat_2.ready$Deciduous,       # Deciduous Forest
   dat_2.ready$Agriculture,     # Agriculture
-  dat_2.ready$Grassland)       # Grassland    
+  dat_2.ready$Grassland,       # Grassland    
+  dat_2.ready$Water)           # Water
 
 rm(list = setdiff(ls(), c("dat_2.ready", "X")))
 
@@ -178,17 +179,17 @@ nimbleMCMC_samples <- nimbleMCMC(
 
 end <- Sys.time()
 
-saveRDS(nimbleMCMC_samples, "20250202_MovementRun3.RDS")
+saveRDS(nimbleMCMC_samples, "20250206_MovementRun4.RDS")
 
 #' Print the means and standard deviations of the posterior samples for the beta coefficients
-colMeans(nimbleMCMC_samples[, 63763:63770])
-colSds(nimbleMCMC_samples[, 63763:63770])
+colMeans(nimbleMCMC_samples[, 46612:46620])
+colSds(nimbleMCMC_samples[, 46612:46620])
 
 #' View traceplots
 #MCMCtrace(nimbleMCMC_samples, pdf = FALSE)
 
 #' Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
-beta_samples <- nimbleMCMC_samples[, 63763:63770]
+beta_samples <- nimbleMCMC_samples[, 46612:46620]
 
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
@@ -199,7 +200,7 @@ samples_df <- as.data.frame(samples_matrix)
 #' Create a vector of new names
 new_names <- c("Intercept", "Distance to Primary Road", "Distance to Secondary Road", 
                "Mixed Forest", "Evergreen Forest", "Deciduous Forest", "Agriculture",
-               "Grassland/Shrub")
+               "Grassland/Shrub", "Water")
 
 #' Assign the variable names to the columns of the beta_samples
 colnames(samples_df) <- new_names
@@ -207,4 +208,4 @@ colnames(samples_df) <- new_names
 #' View the renamed data frame
 head(samples_df)
 
-saveRDS(samples_df, "20250203_samples_df.RDS")
+saveRDS(samples_df, "20250209_samples_df.RDS")

@@ -154,11 +154,12 @@ pa.nests.covs$Developed <- ifelse(pa.nests.covs$landuse == "Developed", 1, 0)
 pa.nests.covs$Deciduous <- ifelse(pa.nests.covs$landuse == "Deciduous Forest", 1, 0)
 pa.nests.covs$Evergreen <- ifelse(pa.nests.covs$landuse == "Evergreen Forest", 1, 0)
 pa.nests.covs$Mixed <- ifelse(pa.nests.covs$landuse == "Mixed Forest", 1, 0)
-pa.nests.covs$Grassland<- ifelse(pa.nests.covs$landuse == "Grassland/Shrub", 1, 0)
+pa.nests.covs$Grassland <- ifelse(pa.nests.covs$landuse == "Grassland/Shrub", 1, 0)
+pa.nests.covs$Water <- ifelse(pa.nests.covs$landuse == "Water", 1, 0)
 
 
 ########################################
-## Save RData file 20250204_Covs
+## Save RData file 20250206_Covs
 
 ################################################################################
 ################################################################################
