@@ -6,7 +6,8 @@
 #'   html_document: 
 #'     toc: true
 #'---
-#'
+#' **Purpose**: This script identifies incubation behavior using daily average standard deviation calculations 
+#' **Last Updated**: 1/31/2025
 
 ###########################################
 ## Load Packages 
@@ -26,57 +27,31 @@ library(tidyverse)
 #' Other than the issue with subsetting properly this loop works
 #' I will run this over the weekend and get separate csvs for each unique band id, I will probably need help with the identifying nest attempts (bottom of script) next week
 
-#' Get working directory
 working.dir <- getwd()
 
-#' List all CSV files in the directory using list.files
+
 file_paths <- list.files(path = "E:/ACC/Raw", pattern = "\\.csv$", full.names = TRUE)
 
-#' Loop through each file
+
 for (file in file_paths) {
-  
-  #' Read in the large CSV file
   temp_data <- fread(file)
-  
-  #' Get unique bandid values within the file
   unique_bandids <- unique(temp_data$bandid)
   
-  #' Loop through each unique bandid
   for (i in 1:length(unique_bandids)) {
-    
-    #' Get the current bandid
     bandid.tmp <- unique_bandids[i]
-    
-    #' Filter the data for the current bandid
     bandid_data <- subset(temp_data, bandid == bandid.tmp)
-    
-    #' Extract a substring from the transmitter ID column, characters in position 4-8
     bandid_data$transmitter <- as.factor(substr(bandid_data$transmitter, 4, 8))
-    
-    #' Convert from UTC to America/New York time zone
     bandid_data$timeofday <- ymd_hms(paste(bandid_data$date, bandid_data$time), tz = "UTC")
     bandid_data$timeofday <- with_tz(bandid_data$timeofday, "America/New_York")
-    
-    #' Constrain dataset to daylight hours (6 AM to 7 PM)
     bandid_data <- bandid_data[hour(bandid_data$timeofday) >= 6 & hour(bandid_data$timeofday) <= 19, ]
-    
-    #' Calculate rowwise standard deviation for the z-axis columns
     bandid_data[, z.sd := rowSds(as.matrix(.SD)), .SDcols = seq(11, 128, 3)]
-    
-    #' Create a new data table with the required columns
     bandid_data <- data.table(transmitter = bandid_data$transmitter,
                               z.sd = bandid_data$z.sd,
                               date = bandid_data$date,
                               bandid = bandid_data$bandid)
-    
-    #' Construct the output file name for this bandid
-    output_file <- paste0("E:/ACC/processed/bandid_", bandid.tmp, "_data.csv")
-    
-    #' Check if the file exists already and modify the name if needed
+    output_file <- paste0("E:/ACC/Draft2/", bandid.tmp, "_data.csv")
     counter <- 1
     original_output_file <- output_file
-    
-    #' Loop to increment counter until a unique file name is found
     while (file.exists(output_file)) {
       output_file <- paste0(tools::file_path_sans_ext(original_output_file), "_", 
                             counter,
@@ -85,26 +60,20 @@ for (file in file_paths) {
       counter <- counter + 1
     }
     
-    #' Write the filtered data to a separate CSV file
-    fwrite(bandid_data, output_file, path = "E:/ACC/")
-    
-    
-    #' Checkpoint
+    fwrite(bandid_data, output_file)
     message("Finished processing bandid: ", bandid.tmp, " in file: ", file)
     
-    #' Clean up memory
     rm(bandid.tmp, bandid_data)
     gc()  
     
   }
   
-  #' Clean up memory after processing the entire file
   rm(temp_data)
   gc()  
 }
 
 
-##################################################
+################################################################################
 ## Data Prep-Consolidate Nesting Data 
 
 #' Read in nest csv 
@@ -112,44 +81,32 @@ nests <- read.csv("Data Management/Csvs/Processed/Nests/Nests/2025_CleanedNests_
 unique(nests$NestID)
 
 
+################################################################################
+## Check to see if there are missing bandids that didn't download
+
+#' ids <- (unique(nests$bandid)) %>% as.data.frame()
+#' files <- (list.files("E:/ACC/Draft2/", pattern = "\\.csv$", full.names = TRUE))
+#' bandids <- str_extract(files, "(?<=bandid_)\\d+") %>% as.data.frame()
+#' missing_bandids <- setdiff(ids$., bandids$.)
+#' nests.missing <- nests %>%
+#'   dplyr::filter(bandid %in% missing_bandids) 
+#' 
+#' #' Use this file to download the rest of the bandids
+#' write.csv(nests.missing, "Calculating Nest Incubation Dates/20250124_Nests.Missing.csv")
+
+################################################################################
+## Process Data-Get Incubation Start and End Dates
+
+#' Get incubation start and end dates using daily z-axis standard deviation calculations
 #' Make sure that only nest attempts where the nest was found are included
 #' Create a begin column which truncates the ACC data to 30 days prior to the checkdate + 3 days
-nests <- nests %>%
+nests.1 <- nests %>%
   dplyr::filter(NestBowlFound == "Y") %>%
   dplyr::mutate(CheckDate = as.Date(CheckDate)) %>%
   dplyr::mutate(checkdate3 = CheckDate + lubridate::days(3)) %>%
   dplyr::mutate(begin = checkdate3 - lubridate::days(30)) %>%
   dplyr::rename("bandid" = BandID)
-glimpse(nests)
-
-
-######################################################################
-## Check to see if there are missing bandids that didn't download
-
-ids <- (unique(nests$bandid)) %>% as.data.frame()
-files <- (list.files("E:/ACC/Processed/zaxis_calcs/", pattern = "\\.csv$", full.names = TRUE))
-bandids <- str_extract(files, "(?<=bandid_)\\d+") %>% as.data.frame()
-missing_bandids <- setdiff(ids$., bandids$.)
-nests.missing <- nests %>%
-  dplyr::filter(bandid %in% missing_bandids) 
-
-#' Use this file to download the rest of the bandids
-write.csv(nests.missing, "Calculating Nest Incubation Dates/20250124_Nests.Missing.csv")
-
-
-##############################
-## Update 1/24/25
-
-# I Was unable to download ACC data from these 12 birds from the VM
-# We might just have to move forward with our sample of 156 for now
-
-
-##############################################################
-## Process Data-Get Incubation Start and End Dates
-
-#' Get incubation start and end dates using daily z-axis standard deviation calculations
-#' Will just put these into the nests raw file 
-
+glimpse(nests.1)
 
 #' Creates an empty dataframe with the following information 
 #' Transmitter: Character (TransmitterID)
@@ -162,7 +119,7 @@ nest.attemps.id<-list()
 prop_15_complete_list <- list()
 
 #' List all CSV files in the directory using list.files
-files <- list.files("E:/ACC/Processed/zaxis_calcs/", pattern = "\\.csv$", full.names = TRUE)
+files <- list.files("E:/ACC/Draft2/", pattern = "\\.csv$", full.names = TRUE)
 
 #' Loop through each file and extract incubation start and end dates
 #' For the length of files
@@ -177,12 +134,12 @@ for (i in 1:length(files)) {
                                    stringsAsFactors=FALSE)
   
   bandid_data <- fread(files[i])
-  nest.ID.match<-nests[which(nests$bandid ==bandid_data$bandid[1]),]
+  nest.ID.match<-nests.1[which(nests.1$bandid ==bandid_data$bandid[1]),]
   
   for (n in 1:nrow(nest.ID.match)){
     
     if (nrow(nest.ID.match)==1){
-      sub<- bandid_data[bandid_data$date >= nest.ID.match$begin[n] & 
+      sub<- bandid_data[bandid_data$date >= nest.ID.match[n] & 
                           bandid_data$date <= nest.ID.match$checkdate3[n], ]
     }else{                    
       sub<- bandid_data[bandid_data$date >= max(nest.ID.match$checkdate3[n-1],nest.ID.match$begin[n]) & 
@@ -236,49 +193,43 @@ for (i in 1:length(files)) {
     
   }
     
-
     prop_15_complete_list[[paste("bird_",i, "_nest_", n, sep = "")]] <- df.prop.15.complete
     
   }
 
-#' Create dataframe
+#' Create object with all nest attempts
+#' Convert from a list to a dataframe 
 nest.attemps.df <- do.call(rbind, nest.attemps.id)
-
-#' Rename column
 nest.attemps.df <- nest.attemps.df %>%
   dplyr::rename(bandid = "band") %>%
   dplyr::rename("NestID" = nestid)
-
-#' Merge 'nests' with 'nest.attemps.df' using 'nestid'
 nest.attemps.df <- merge(nest.attemps.df, 
                          nests[, c("NestID", "CheckDate", "NestFate")], 
                          by = "NestID", all.x = TRUE)
 
-#' Filter nest.attempts.df for rows with NA in startI or endI
+#' View all nests with NAs
 na_nests <- nest.attemps.df[is.na(nest.attemps.df$startI) | is.na(nest.attemps.df$endI), ]
-
-#' Create dataframe
 prop_15_complete.df<- do.call(rbind, prop_15_complete_list)
-
-#' Filter 'nests' to only include rows where 'checkdate' matches any 'bandid' in 'nest.attemps.df'
 na.nests.prop15 <- prop_15_complete.df %>%
   dplyr::filter(nestid %in% na_nests$NestID)
 
-#' Drop all NA values
+#' Filter NA nests out of data
 filtered_nest.attemps.all.df <- tidyr::drop_na(nest.attemps.df)
 
-#' Filter the dataframe to only include rows where the 'checkdate' is within 14 days of 'endI'
+#' Constrain data to only include nests in which the start of incubation is not equal to the end
+#' The CheckDate is greater than or equal to the end of incubation 
+#' The end of incubation is greater than the start of incubation (Didn't have observations of this)
 filtered_nest.attemps.check.df <- filtered_nest.attemps.all.df %>%
-  dplyr::filter( CheckDate >= endI) %>%
   dplyr::filter(startI != endI) %>%
+  dplyr::filter(CheckDate >= endI) %>%
   dplyr::filter(endI >= startI)
 
 
-##############################################
+################################################################################
 ## Output Data 
 
 write.table(filtered_nest.attemps.check.df,
-            "Data Management/Csvs/Processed/IncubationDates/20250124_NestAttempts_allbirds.csv",
+            "Data Management/Csvs/Processed/IncubationDates/20250131_NestAttempts_allbirds.csv",
             sep = ",",
             row.names = FALSE, 
             col.names = TRUE)
