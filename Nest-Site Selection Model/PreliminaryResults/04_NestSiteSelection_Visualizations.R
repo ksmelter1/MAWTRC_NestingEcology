@@ -1,4 +1,3 @@
-
 #'---
 #' title: Nest-site selection of wild turkeys in Pennsylvania (an SSF analysis)
 #' author: "K. Smelter, F. Buderman"
@@ -86,16 +85,33 @@ mean_estimates <- mean_estimates %>%
                                        "Deciduous Forest",
                                        "Agriculture",
                                        "Distance to Primary Road",
-                                       "Distance to Secondary Road"
-                                      ))) 
+                                       "Distance to Secondary Road" ))) 
 mean_estimates
 
 
 ################################################################################
 ## Betas Plot 
 
+#' Figure for display in powerpoint presentations
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5) +  
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
+  ylab("Selection Relative to Developed") +
+  theme_minimal() + 
+  coord_flip() +
+  scale_color_manual(values = c("Nest" = "#A44200", "Landscape" = "#D65F5F")) +  
+  scale_shape_manual(values = c("Nest" = 17, "Landscape" = 16)) +  
+  theme(axis.title.x = element_text(size = 14, margin = margin(t = 10), hjust = 0.38), 
+        axis.text.x = element_text(size = 14),  
+        axis.text.y = element_text(size = 14),  
+    axis.title.y = element_blank(),
+        legend.position = "none")  
+p2.betas
+
+#' Figure for display in manuscript
+p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
+  geom_point(size = 3.5, stroke = 1.5, fill = NA) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
   ylab("Beta Estimate") +
@@ -103,10 +119,8 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
   coord_flip() +
   scale_color_manual(values = c("Nest" = "#A44200", "Landscape" = "#D65F5F")) +  
   scale_shape_manual(values = c("Nest" = 17, "Landscape" = 16)) +  
-  theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(hjust = 0.38),  
-        legend.position = "none")  
-
+  theme(axis.title.x = element_text(margin = margin(t = 10), hjust = 0.38), 
+        axis.title.y = element_blank())
 p2.betas
 
 
@@ -150,7 +164,6 @@ p3.predict
 ################################################################################
 ## Create panels
 
-
 plot_combined <- ggarrange(p2.predict, p3.predict, 
                            nrow = 1, ncol = 2) %>% 
   annotate_figure(left = text_grob("Relative Probability of Use", rot = 90))
@@ -158,4 +171,4 @@ plot_combined
 
 
 ################################################################################
-################################################################################
+################################################################################X

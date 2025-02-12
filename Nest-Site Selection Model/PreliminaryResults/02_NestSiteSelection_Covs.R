@@ -3,7 +3,7 @@
 #' title: Nest-site selection of wild turkeys in Pennsylvania (an SSF analysis)
 #' author: "K. Smelter, F. Buderman"
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output:
+#' output: *InsertDate*_Covs.RData
 #'   html_document: 
 #'     toc: true
 #'---
@@ -159,7 +159,7 @@ pa.nests.covs$Water <- ifelse(pa.nests.covs$landuse == "Water", 1, 0)
 
 
 ########################################
-## Save RData file 20250206_Covs
+## Save RData file *InsertDate_Covs
 
 ################################################################################
 ################################################################################

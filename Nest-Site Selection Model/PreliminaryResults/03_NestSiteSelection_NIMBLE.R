@@ -2,7 +2,7 @@
 #' title: Nest-site selection of female wild turkeys in Pennsylvania (an SSF analysis)
 #' author: "K. Smelter, F. Buderman"
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output:
+#' output: *InsertDate*_NimbleResults.RData
 #'   html_document: 
 #'     toc: true
 #'---
@@ -13,14 +13,12 @@
 #####################
 ## Load Packages 
 
-#' Vector of package names
 packages <- c("matrixStats",
               "nimble",
               "MCMCvis",
               "tidyverse",
               "sf")
 
-#' Function to load a package or install it if not already installed
 load_packages <- function(package_name) {
   if (!require(package_name, character.only = TRUE)) {
     install.packages(package_name, dependencies = TRUE)
@@ -28,7 +26,6 @@ load_packages <- function(package_name) {
   }
 }
 
-#' Apply the function to each package name
 lapply(packages, load_packages)
 
 
@@ -39,12 +36,10 @@ lapply(packages, load_packages)
 load("Data Management/RData/Nest-Site Selection/Covs/Draft6/20250206_Covs.RData")
 
 
-#' Create nest.data object for models
 nest.data <- pa.nests.covs 
 str(pa.nests.covs)
 
 
-#' Select columns of interest
 nest.data <- nest.data %>%
   dplyr::select(NestID, BandID, , PercGrassForb, PercWoody, AvgMaxVO,
                 Case, Developed, Deciduous, Mixed, Evergreen, Agriculture, 
@@ -57,7 +52,6 @@ nest.data <- nest.data %>%
 nest.data <- nest.data %>% 
   dplyr::mutate(across(everything(), ~ iconv(., to = "UTF-8")))
 
-#' Change structure to numeric
 nest.data <- nest.data %>%
   dplyr::mutate(PercWoody = as.numeric(PercWoody)) %>%
   dplyr::mutate(PercGrassForb = as.numeric(PercGrassForb)) %>%
@@ -70,7 +64,6 @@ nest.data <- nest.data %>%
 glimpse(nest.data)
 str(nest.data)
 
-#' Scale predictors
 nest.data <- nest.data %>%
   dplyr::mutate(StemCount = scale(StemCount)) %>%
   dplyr::mutate(PercWoody = scale( PercWoody)) %>%
@@ -83,7 +76,6 @@ nest.data <- nest.data %>%
 str(nest.data)
 glimpse(nest.data)
 
-#' Change structure to numeric
 nest.data <- nest.data %>%
   dplyr::mutate(PercWoody = as.numeric(PercWoody)) %>%
   dplyr::mutate(PercGrassForb = as.numeric(PercGrassForb)) %>%
@@ -103,13 +95,10 @@ nest.data <- nest.data %>%
 glimpse(nest.data)
 str(nest.data)
 
-
-#' Drop geometry column
 nest.data <- nest.data %>%
   st_drop_geometry() %>%
   dplyr::mutate(Case = as.numeric(Case))
 
-#' Order df by nestid
 nest.data <- nest.data[order(nest.data$NestID),]
 
 #' Change Nest_ID_V to numeric 
@@ -225,7 +214,7 @@ head(samples_df)
 
 
 ##########################################
-## Save RData file 20250125_NimbleResults
+## Save RData file *InsertDate_NimbleResults
 
 ################################################################################
 ################################################################################

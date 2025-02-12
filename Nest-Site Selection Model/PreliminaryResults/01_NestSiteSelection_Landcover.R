@@ -3,7 +3,7 @@
 #' title: Nest-site selection of wild turkeys in Pennsylvania (an SSF analysis)
 #' author: "K. Smelter, F. Buderman"
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: 20250118_Landcover.RData
+#' output: *InsertDate*_Landcover.RData
 #'   html_document: 
 #'     toc: true
 #'---
@@ -14,7 +14,6 @@
 ################################################################################
 ## Load Packages 
 
-#' Vector of package names
 packages <- c("dplyr",
               "FedData",
               "mapview",
@@ -22,10 +21,9 @@ packages <- c("dplyr",
               "terra",
               "tidyr",
               "tigris",
-              "tidyverse"
-                      )
+              "tidyverse",
+              "rasterVis")
 
-#' Function to load a package or install it if not already installed
 load_packages <- function(package_name) {
   if (!require(package_name, character.only = TRUE)) {
     install.packages(package_name, dependencies = TRUE)
@@ -33,7 +31,6 @@ load_packages <- function(package_name) {
   }
 }
 
-#' Apply the function to each package name
 lapply(packages, load_packages)
 
 
@@ -56,7 +53,7 @@ pa.nlcd <- FedData::get_nlcd(template= pa.outline, year = 2019,
                              force.redo = T)
 
 #' Reclassify NLCD -- Skyrockets RAM
-#' See covertyps for NLCD here: https://www.mrlc.gov/data/legends/national-land-cover-database-class-legend-and-description
+#' See covertypes for NLCD here: https://www.mrlc.gov/data/legends/national-land-cover-database-class-legend-and-description
 terra::values(pa.nlcd) <- ifelse(terra::values(pa.nlcd) %in% c(21:24), yes = "Developed", ## Developed Open, low, medium, high intensity
                                  no = ifelse(terra::values(pa.nlcd) %in% c(41), yes = " Deciduous Forest", ## Deciduous
                                              no= ifelse(terra::values(pa.nlcd) %in% c(42), yes= "Evergreen Forest", ## Evergreen Forest
@@ -64,9 +61,17 @@ terra::values(pa.nlcd) <- ifelse(terra::values(pa.nlcd) %in% c(21:24), yes = "De
                                                                no= ifelse(terra::values(pa.nlcd) %in% c(31, 51:52,71:74), yes= "Grassland/Shrub", ## Grassland/Herbacaeous, Shrub/Scrub  
                                                                    no= ifelse(terra::values(pa.nlcd) %in% c(81:83), yes= "Agriculture", ## Pasture, Cultivated Crops
                                                                               no= "Water")))))) # All water categories
-#' Check the reclassified values 
 unique(terra::values(pa.nlcd))
-plot(pa.nlcd)
+
+pa.nlcd <- crop(pa.nlcd, pa.outline)
+pa.nlcd <- mask(pa.nlcd, pa.outline)
+
+levelplot(pa.nlcd,
+          col.regions = terrain.colors(10), 
+          at = seq(1, 10, by = 1), 
+          scales = list(draw = TRUE, 
+                        x = list(tck = 0, labels = FALSE), 
+                        y = list(tck = 0, labels = FALSE)))
 
 writeRaster(pa.nlcd, "Data Management/Rasters/nlcd/pa.nlcd.tif", overwrite = T)
 
@@ -75,7 +80,7 @@ writeRaster(pa.nlcd, "Data Management/Rasters/nlcd/pa.nlcd.tif", overwrite = T)
 ## Load in NLCD
 
 #' Read in created NLCD file from above
-pa.nlcd <- terra::rast("Data Management/Rasters/nlcd/paNLCD.tiff")
+pa.nlcd <- terra::rast("Data Management/Rasters/nlcd/pa.nlcd.tif")
 
 pa.nests <- read_csv("Data Management/Csvs/Processed/Nests/Vegetation Surveys/20250121_CleanedNestsVeg_2022_2023.csv")
 pa.nests
@@ -96,12 +101,11 @@ pa.nests<- inner_join(pa.nests.sf, nests.inc, by = "NestID") %>%
 #' Extract point value at each nest
 landcov <-terra::extract(pa.nlcd, pa.nests)
   
-#' Bind columns together
 pa.nests.landcov <- cbind(pa.nests, landcov) %>%
   dplyr::rename("landuse" = Class)
 
 ################################################################################
-## Save RData file 20250131_Landcover.RData
+## Save RData file *InsertDate*_Landcover.RData
 
 ################################################################################
 ################################################################################
