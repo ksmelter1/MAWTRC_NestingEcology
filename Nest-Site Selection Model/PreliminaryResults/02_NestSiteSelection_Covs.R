@@ -14,7 +14,6 @@
 #####################
 ## Load Packages 
 
-#' Vector of package names
 packages <- c("sf",
               "amt",
               "tigris",
@@ -23,7 +22,6 @@ packages <- c("sf",
               "tidyverse",
               "stars")
 
-#' Function to load a package or install it if not already installed
 load_packages <- function(package_name) {
   if (!require(package_name, character.only = TRUE)) {
     install.packages(package_name, dependencies = TRUE)
@@ -31,7 +29,6 @@ load_packages <- function(package_name) {
   }
 }
 
-#' Apply the function to each package name
 lapply(packages, load_packages)
 
 ########################################
@@ -46,7 +43,7 @@ pa.roads.prim <- st_read("Data Management/Shapefiles/roads/Pennsylvania/Primary 
   dplyr::select(Road_ID) 
 
 #' Read in NLCD
-pa.nlcd <- terra::rast("Data Management/Rasters/nlcd/paNLCD.tiff")
+pa.nlcd <- terra::rast("Data Management/Rasters/nlcd/pa.nlcd.tif")
 
 #' Create skeleton raster
 #' To call the raster just type in the name in the console 
@@ -71,7 +68,7 @@ dist.prim <- mask(dist.prim, pa.nlcd)
 raster_crs <- crs(dist.prim)
 
 #' Save raster
- writeRaster(dist.prim, "paroadrast.prim.tiff")
+ #writeRaster(dist.prim, "paroadrast.prim.tiff")
 
 #' Load Raster
 dist.prim<- terra::rast("Data Management/Rasters/PA Roads/paroadrast.prim.tiff")
@@ -103,7 +100,6 @@ raster_crs <- crs(dist.sec)
 
 #' Load Raster
 dist.sec<- terra::rast("Data Management/Rasters/PA Roads/paroadrast.sec.tiff")
-plot(dist.sec)
 
 ###############################
 ## Extract Distances to Roads

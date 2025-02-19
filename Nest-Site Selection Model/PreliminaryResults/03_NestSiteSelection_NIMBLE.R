@@ -10,7 +10,7 @@
 #' **Purpose**: This script creates a Bayesian conditional logistic regression model for nest-site selection in JAGs using the gathered covariates 
 #' **Last Updated**: 1/18/25
 
-#####################
+################################################################################
 ## Load Packages 
 
 packages <- c("matrixStats",
@@ -39,11 +39,10 @@ load("Data Management/RData/Nest-Site Selection/Covs/Draft6/20250206_Covs.RData"
 nest.data <- pa.nests.covs 
 str(pa.nests.covs)
 
-
 nest.data <- nest.data %>%
   dplyr::select(NestID, BandID, , PercGrassForb, PercWoody, AvgMaxVO,
                 Case, Developed, Deciduous, Mixed, Evergreen, Agriculture, 
-                primary, secondary, StemCount, Grassland, AvgVO, Water,
+                primary, secondary, StemCount, Grassland, AvgVO, Water, 
                 PercFern) %>%
   dplyr::rename("Primary" = primary) %>%
   dplyr::rename("Secondary" = secondary)

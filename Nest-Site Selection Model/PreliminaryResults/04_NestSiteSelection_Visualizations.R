@@ -111,16 +111,16 @@ p2.betas
 
 #' Figure for display in manuscript
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
-  geom_point(size = 3.5, stroke = 1.5, fill = NA) +  
+  geom_point(size = 3.5, stroke = 1.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
   ylab("Beta Estimate") +
+  xlab("Parameter") +
   theme_minimal() + 
   coord_flip() +
-  scale_color_manual(values = c("Nest" = "#A44200", "Landscape" = "#D65F5F")) +  
+  scale_color_manual(values = c("Nest" = "#A44200", "Landscape" = "#D65F5F", fill = color)) +  
   scale_shape_manual(values = c("Nest" = 17, "Landscape" = 16)) +  
-  theme(axis.title.x = element_text(margin = margin(t = 10), hjust = 0.38), 
-        axis.title.y = element_blank())
+  theme(axis.title.x = element_text(margin = margin(t = 10), hjust = 0.38))
 p2.betas
 
 

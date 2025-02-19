@@ -41,6 +41,7 @@ load("Data Management/RData/Pre-Nesting Movement Model/RData Files/Draft3/202501
 
 #' Load NLCD Raster
 pa.nlcd <- terra::rast("Data Management/Rasters/nlcd/pa.nlcd.tif")
+plot(pa.nlcd)
 
 
 #####################
@@ -161,6 +162,23 @@ random_steps$Water <- ifelse(random_steps$landuse == "Water", 1, 0)
 
 #' Change case to numeric
 random_steps$case_ <- as.numeric(random_steps$case_)
+
+
+
+p1 <- random_steps %>% 
+  group_by(case_, landuse) %>%  
+  summarize(n = n()) %>% 
+  mutate(prop = n / sum(n), 
+         label = paste0(round(prop * 100, 1), "%")) %>% 
+  ggplot(aes(landuse, prop, fill = case_, group = case_, label = label)) + 
+  geom_col(position = position_dodge2()) +
+  geom_text(size = 4, vjust = -0.25, position = position_dodge(width = 1)) +
+  labs(x = "Land use class", y = "Proportion", fill = "case_") +
+  scale_fill_brewer(palette = "Paired", name = "case_", 
+                    breaks = c("FALSE", "TRUE"), labels = c("Available", "Used")) +
+  theme_light()
+
+p1
 
 ################################################################################
 ################################################################################

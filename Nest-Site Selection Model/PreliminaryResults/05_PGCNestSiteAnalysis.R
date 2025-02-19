@@ -10,6 +10,8 @@
 #' **Purpose**: This script creates a Bayesian conditional logistic regression model for nest-site selection in JAGs using the gathered covariates 
 #' **Last Updated**: 2/4/25
 
+#' The PGC is interested in a nest-site selection model with no NLCD reference level
+
 #####################
 ## Load Packages 
 
@@ -190,7 +192,7 @@ summary(nest.data.ready)
 glimpse(nest.data.ready)
 
 
-###############################################
+################################################################################
 ## Nimble Model
 
 nestmodel<-nimbleCode({
@@ -327,7 +329,7 @@ mean_estimates
 ## Betas Plot 
 
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
-  geom_point(size = 3.5) +  
+  geom_point(size = 3.5, fill = "white") +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
   labs(x = "Parameter", y = "Beta Estimate") +
@@ -336,14 +338,8 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
   scale_color_manual(values = c("Nest" = "#A44200")) +  
   scale_shape_manual(values = c("Nest" = 17)) +  
   theme(
-    axis.title.x = element_text(margin = margin(t = 10), hjust = 0.42),  
-    axis.title.y = element_blank(),
-    legend.position = "none"
-  )
-
+    axis.title.x = element_text(margin = margin(t = 10), hjust = 0.42)) 
 p2.betas
-
-
 
 
 ################################################################################
@@ -363,7 +359,6 @@ p1.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() 
   theme(
     axis.title.x = element_text(margin = margin(t = 10)), 
     axis.title.y = element_blank())
-
 p1.predict
 
 #' Percent Fern

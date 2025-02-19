@@ -69,11 +69,14 @@ ggplot()+
 
 map_data <- map_data %>% st_transform(4326)
 
-#' Visualize map
+#' Visualize map with study area filled as white and capture sites visible on top
 map <- ggplot() +
-  geom_sf(data = pa.wmus, color = "gray30", fill="grey90") +
-  geom_sf(data = map_data, color = "black") +
-  geom_sf(data = capture.sites, shape=17, size = 3, colour="black", show.legend = F) +
-  theme_void() 
-#' View map
+  geom_sf(data = pa.wmus, color = "gray30", fill="grey90") +  
+  geom_sf(data = map_data, color = "black") +  
+  geom_sf(data = study.area, fill = "white", color = "black") +  
+  geom_sf(data = capture.sites, shape=17, size = 3, colour="black", show.legend = F) +  
+  theme_void()
+
+#' View the map
 map
+

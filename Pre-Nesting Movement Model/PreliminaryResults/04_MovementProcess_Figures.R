@@ -15,7 +15,8 @@
 
 #' Vector of package names
 packages <- c("tidyverse",
-              "gridExtra")
+              "gridExtra",
+              "stringr")
 
 
 #' Function to load a package or install it if not already installed
@@ -92,15 +93,33 @@ mean_estimates <- mean_estimates %>%
                                               "Distance to Primary Road",
                                               "Distance to Secondary Road"
                                             ))) 
-mean_estimates
+mean_estimates2 <- str_wrap(mean_estimates, width = 10)
 
 #########################
 ## Beta Plot 
 
-#' Beta estimates and associated 95% credible intervals 
-#' Macroscale and Microscale predictors
+#' Figure for Presentations
+#' Beta estimates and associated 90% credible intervals 
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5) +  
+  geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
+  geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
+  labs(x = "Parameter", y = "Selection Relative to Developed") +
+  theme_minimal() + 
+  coord_flip()+
+  scale_color_manual(values = c("Landscape" = "#D65F5F")) +  
+  scale_shape_manual(values = c("Landscape" = 16))+  
+  theme(
+    axis.title.x = element_text(size = 14, margin = margin(t = 10), hjust = 0.45),  
+    axis.title.y = element_blank(),
+    axis.text.y = element_text(size = 14),
+    legend.position = "none"
+  )
+p2.betas
+
+#' Figure for manuscripts
+p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
+  geom_point(size = 3.5, stroke = 1.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
   labs(x = "Parameter", y = "Beta Estimate") +
@@ -109,19 +128,9 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
   scale_color_manual(values = c("Landscape" = "#D65F5F")) +  
   scale_shape_manual(values = c("Landscape" = 16))+  
   theme(
-    axis.title.x = element_text(margin = margin(t = 10), hjust = 0.45),  
-    axis.title.y = element_blank(),
-    legend.position = "none"
-  )
+    axis.title.x = element_text(margin = margin(t = 10), hjust = 0.45))
 p2.betas
 
-#' Save the combined microscale plot as a PNG image
-# ggsave("01_BetaEstimates_90CIs.png", 
-#        p2.betas, 
-#        path = "Data Management/Figures/Nest-Site Selection Process/Beta Outputs/",
-#        width = 12, 
-#        height = 10,
-#        bg = "white")
 
 
 ################################################################################
