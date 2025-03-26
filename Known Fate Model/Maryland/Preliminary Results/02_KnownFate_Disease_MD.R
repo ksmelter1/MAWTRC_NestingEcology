@@ -18,15 +18,15 @@
 library(nimble)
 library(MCMCvis)
 library(tidyverse)
-library(GGally)
+library(matrixStats)
 
-load("Data Management/RData/Known Fate/PreliminaryResults/20250219_PreliminaryResults_Habitat_Climate.RData")
+load("Data Management/RData/Known Fate/PreliminaryResults/20250219_PreliminaryResults_Disease.RData")
 
 
 ################################################################################
 ## Data Prep- Encounter Histories
 
-nests.scaled <- nests.scaled.ready
+
 colnames(nests.scaled)
 
 #' Convert start and end of incubation days to date objects
@@ -134,46 +134,46 @@ f<k
 #' range(testPrecip, na.rm = T) 
 
 
-# Adjusting the loop for a leap year (2024)
-temperatureC2023 <- weather.array[1:31,1:365,1]
-#temperatureC2024 <- weather.array[1:31, 366:731, 1]   # 366th to 731st day (leap year)
-precip2023 <- weather.array[1:31,1:365,2]
-#precip2024 <- weather.array[1:104, 366:731, 2]          # 366th to 731st day (leap year)
-
-testTempC3Roll = data.frame(matrix(NA, nrow = 31, ncol = 77))   
-testPrecip3Roll = data.frame(matrix(NA, nrow = 31, ncol = 77))
-
-for(i in 1:nrow(surv.caps)){
-  if(surv.caps$Year[i] == 1){
-    for(j in (f[i]+111):(k[i]+111)){
-      testTempC3Roll[i,j-111] <- mean(temperatureC2023[i,((j-2):j)])
-      testPrecip3Roll[i,j-111] <- mean(precip2023[i,((j-2):j)])
-    }
-  }
-}
-
-#' Check work
-testTempC3Roll[31,1:77]
-testPrecip3Roll[31,1:77]
-range(testPrecip3Roll, na.rm = T) 
-range(testTempC3Roll, na.rm = T)
-
-
-#' Scale weather data
-#' Had issues with the scale function so I did this without packages
-weather.array2 <- array(data = NA, dim = c(nrow(testTempC3Roll), ncol(testTempC3Roll),2))
-testTempC.mat <- as.matrix(testTempC3Roll)
-testTempC.scale <- (testTempC.mat - mean(testTempC.mat,na.rm=T))/sd(testTempC.mat,na.rm=T)
-testTempC.scale
-testPrecip.mat <- as.matrix(testPrecip3Roll)
-#testPrecip.mat[is.na(testPrecip.mat)] <- 0
-testPrecip.scale <- (testPrecip.mat - mean(testPrecip.mat,na.rm=T))/sd(testPrecip.mat,na.rm=T)
-testPrecip.scale
-weather.array2[,,1] <- testTempC.scale
-weather.array2[,,2] <- testPrecip.scale
-
-
-
+#' # Adjusting the loop for a leap year (2024)
+#' temperatureC2023 <- weather.array[1:31,1:365,1]
+#' #temperatureC2024 <- weather.array[1:31, 366:731, 1]   # 366th to 731st day (leap year)
+#' precip2023 <- weather.array[1:31,1:365,2]
+#' #precip2024 <- weather.array[1:104, 366:731, 2]          # 366th to 731st day (leap year)
+#' 
+#' testTempC3Roll = data.frame(matrix(NA, nrow = 31, ncol = 77))   
+#' testPrecip3Roll = data.frame(matrix(NA, nrow = 31, ncol = 77))
+#' 
+#' for(i in 1:nrow(surv.caps)){
+#'   if(surv.caps$Year[i] == 1){
+#'     for(j in (f[i]+111):(k[i]+111)){
+#'       testTempC3Roll[i,j-111] <- mean(temperatureC2023[i,((j-2):j)])
+#'       testPrecip3Roll[i,j-111] <- mean(precip2023[i,((j-2):j)])
+#'     }
+#'   }
+#' }
+#' 
+#' #' Check work
+#' testTempC3Roll[31,1:77]
+#' testPrecip3Roll[31,1:77]
+#' range(testPrecip3Roll, na.rm = T) 
+#' range(testTempC3Roll, na.rm = T)
+#' 
+#' 
+#' #' Scale weather data
+#' #' Had issues with the scale function so I did this without packages
+#' weather.array2 <- array(data = NA, dim = c(nrow(testTempC3Roll), ncol(testTempC3Roll),2))
+#' testTempC.mat <- as.matrix(testTempC3Roll)
+#' testTempC.scale <- (testTempC.mat - mean(testTempC.mat,na.rm=T))/sd(testTempC.mat,na.rm=T)
+#' testTempC.scale
+#' testPrecip.mat <- as.matrix(testPrecip3Roll)
+#' #testPrecip.mat[is.na(testPrecip.mat)] <- 0
+#' testPrecip.scale <- (testPrecip.mat - mean(testPrecip.mat,na.rm=T))/sd(testPrecip.mat,na.rm=T)
+#' testPrecip.scale
+#' weather.array2[,,1] <- testTempC.scale
+#' weather.array2[,,2] <- testPrecip.scale
+#' 
+#' 
+#' 
 
 ################################################################################
 ## Compile Parameters into matrix format
@@ -183,37 +183,23 @@ weather.array2[,,2] <- testPrecip.scale
 fill_NA_with_value <- function(df, value = 0) {
   df[] <- lapply(df, function(col) {
     if (is.numeric(col)) {
-      replace(col, is.na(col), value)
-    } else {
-      col
+      col[is.na(col)] <- value  # Fill NAs with the specified value
     }
+    return(col)  # Return the column (modified or unmodified)
   })
-  return(df)
+  return(df)  # Return the modified dataframe
 }
+
 nests.ready <- fill_NA_with_value(nests.scaled)
 summary(nests.ready)
 
 #' Model parameters
 X <- cbind(
   rep(1, nrow(nests.ready)),               # Intercept (1)
-  nests.ready$Primary,                     # Distance to Primary Road
-  nests.ready$Secondary,                   # Distance to Secondary Road
-  nests.ready$Mixed,                       # Mixed Forest
-  nests.ready$Evergreen,                   # Evergreen Forest
-  nests.ready$Developed,                   # Developed
-  nests.ready$Agriculture,                 # Agriculture
-  nests.ready$Grassland,                   # Grassland
-  nests.ready$Wetland,                     # Wetland
-  nests.ready$`Nest Incubation Date`,      # Nest Incubation Date
-  nests.ready$IncubationConstancy,         # Incubation Constancy
-  nests.ready$age                          # Age 
+nests.ready$LPDV                           # LPDV
 ) 
 
-#' Use ggpairs to visualize correlations
-ggpairs(as.data.frame(X), 
-        upper = list(continuous = "cor"),
-        diag = list(continuous = "barDiag"),
-        lower = list(continuous = "points"))
+#GGally::ggpairs(nests.ready[,c(13:22)])
 
 
 ################################################################################
@@ -292,12 +278,12 @@ nimbleMCMC_samples <- nimbleMCMC(
 )
 
 summary(nimbleMCMC_samples)
-colMeans(nimbleMCMC_samples[,1:12])
-colSds(nimbleMCMC_samples[,1:12])
+colMeans(nimbleMCMC_samples[,1:2])
+colSds(nimbleMCMC_samples[,1:2])
 MCMCtrace(nimbleMCMC_samples, pdf = FALSE)
 
 #' Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
-beta_samples <- nimbleMCMC_samples[, 1:12]
+beta_samples <- nimbleMCMC_samples[, 1:2]
 
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
@@ -307,17 +293,7 @@ samples_df <- as.data.frame(samples_matrix)
 
 #' Create a vector of new names
 new_names <- c("Intercept", 
-               "Distance to Primary Road",
-               "Distance to Secondary Road",
-               "Mixed Forest",
-               "Evergreen Forest",
-               "Developed",
-               "Agriculture",
-               "Grassland/Shrub",
-               "Wetland",
-               "Nest Incubation Date",
-               "Incubation Constancy", 
-               "Age Class")
+               "LPDV")
 
 #' Assign the variable names to the columns of the beta_samples
 colnames(samples_df) <- new_names
@@ -390,30 +366,17 @@ mean_estimates
 mean_estimates <- mean_estimates %>%
   dplyr::mutate(parameter = factor(parameter, 
                                    levels = c(
-                                     "Precipitation * Minimum Temperature",
-                                     "Minimum Temperature",
-                                     "Precipitation",
-                                     "Wetland",
-                                     "Grassland/Shrub",
-                                     "Mixed Forest",
-                                     "Evergreen Forest",
-                                     "Developed",
-                                     "Agriculture",
-                                     "Distance to Primary Road",
-                                     "Distance to Secondary Road",
-                                     "Incubation Constancy",
-                                     "Nest Incubation Date",
-                                     "Age Class"
+                                     "LPDV"
                                      )))
 mean_estimates
-mean_estimates <- mean_estimates %>%
+mean_estimates1 <- mean_estimates %>%
   mutate(Scale = factor(Scale, levels = c("Individual", "Nest", "Landscape", "Climate")))
 
 ################################################################################
 ## Beta Plot 
 
 #' Beta estimates and associated 90% credible intervals 
-p2.betas <- ggplot(mean_estimates, 
+p2.betas <- ggplot(mean_estimates1, 
                    aes(x = parameter, 
                        y = mean_estimate, 
                        color = Scale, 
@@ -423,7 +386,6 @@ p2.betas <- ggplot(mean_estimates,
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
   labs(x = "Parameter", y = " Posterior Mean") +
   theme_minimal() + 
-  coord_flip()+
   scale_color_manual(values = c("Individual" = "#DA6509",
                                 "Nest" = "#A44200",
                                 "Landscape" = "#D65F5F",
@@ -440,6 +402,6 @@ p2.betas <- ggplot(mean_estimates,
 p2.betas
 
 # Save multiple objects in a single RData file
-save(p2.betas, mean_estimates, file = "kf.betas.habitat.MD.RData")
+save(p2.betas, mean_estimates1, file = "p2.betas.disease.MD.RData")
 
 

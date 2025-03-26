@@ -271,9 +271,14 @@ for (i in 1:169) {
 ################################################################################
 ## Data Prep- Behavior Covariates
 
-#nests.scaled <- readRDS("nests.scaled.RDS")
-hens.behav.out <- left_join(hens.all.sf.buffer_summary, dist.traveled.cov)
+#' Read in RDS file from the behavior script
+hens.behav.out <- readRDS("Data Management/Csvs/Processed/Covariates/Pennsylvania/Behavior/hens.behav.out.RDS")
 
+#' Drop geometry
+#' Keep all observations of hens.behav.out that exist in nests.scaled 
+#' Scale incubation constancy and change it back to numeric
+#' Scale cumulative step length and change it back to numeric 
+#' Remove all observations where the total locations of gps locations within a buffer is NA
 nests.scaled <- nests.scaled %>%
   st_drop_geometry() %>%
   right_join(hens.behav.out, nests.scaled, by = "NestID") %>%

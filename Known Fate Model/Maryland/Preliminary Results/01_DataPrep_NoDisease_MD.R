@@ -238,7 +238,7 @@ nests.scaled$NestFate <- ifelse(nests.scaled$NestFate == "Hatched", 1, 0)
 nest.sites <- nests.scaled %>%
   dplyr::rename("latitude" = Lat, "longitude" = Long, "site" = NestID) %>%
   dplyr::select(latitude, longitude, site)
-write.csv(nest.sites,"Data Management/Csvs/Processed/Nests/Nests/nest.sites.weather_MD.csv")
+#write.csv(nest.sites,"Data Management/Csvs/Processed/Nests/Nests/nest.sites.weather_MD.csv")
 
 #' Perform Daymet download  
 w <- download_daymet_batch(
@@ -284,7 +284,7 @@ weather.array[i, (days_in_2023+1):total_days, 2] <- w[[i]]$data$prcp..mm.day[(da
 }
 
 #' Save weather.array object, weather.array2 will be used in the model (stored in model script)
-saveRDS(weather.array, "weather.RDS_MD.RDS")
+#saveRDS(weather.array, "weather.RDS_MD.RDS")
 
 
 ################################################################################
@@ -295,23 +295,25 @@ hens.behav.out <- readRDS("Data Management/Csvs/Processed/Covariates/Maryland/Be
 hens.behav.out
 
 #' Only keep observations that exist in nessts.sample 
-nests.scaled <- right_join(hens.behav.out, nests.sample) 
+#nests.scaled <- right_join(hens.behav.out, nests.sample) 
 
 #' Only keep observations of nests.scaled that exist in nests.sample
-nests.scaled.ready <- right_join(nests.scaled, nests.sample)
+#nests.scaled.ready <- right_join(nests.scaled, nests.sample)
 
 
 #' Only keep observations of nests.scaled that exist in nests.sample
 #' Scale incubation constancy and Sum of step lengths
-nests.scaled.ready <- right_join(hens.behav.out, nests.scaled.ready) %>%
+nests.scaled.ready <- right_join(hens.behav.out, nests.scaled) %>%
   dplyr::mutate(IncubationConstancy = scale(IncubationConstancy)) %>%
   dplyr::mutate(IncubationConstancy = as.numeric(IncubationConstancy)) %>%
   dplyr::mutate(sum_sl = scale(sum_sl)) %>%
   dplyr::mutate(sum_sl = as.numeric(sum_sl)) %>%
-  dplyr::filter(TotalLocations != "NA") %>%
-  dplyr::filter(NestID != "4255_2022_1")
+  dplyr::filter(TotalLocations != "NA") 
+mapview(nests.scaled.ready)
 
-
+md.sample <- nests.scaled.ready %>%
+  dplyr::select(NestID, BandID, NestYr)
+write_csv(md.sample,"Samples/Maryland/NestingSample_MD.csv")
 
 ################################################################################
 ################################################################################

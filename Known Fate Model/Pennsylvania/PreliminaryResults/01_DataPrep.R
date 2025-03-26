@@ -164,14 +164,12 @@ parasite <- parasite %>%
 dplyr::rename("BandID" = bandid)
 parasite
 
-#' Filter to only include individua;s within nests.scaled df
-parasite.filter <- parasite %>%
-dplyr::filter(BandID %in% nests.scaled$BandID)
-
+parasite.filter <- right_join(parasite, virus.filter)
+colnames(parasite.filter)
 
 #' # Specify the summed columns
-columns_to_sum <- c("Capillaria sp", "Eimeria sp", "Ascarids", "Syngamus sp", "Tetrameres sp",
-                   "Isospora sp", "Monocystis sp", "Raillietina sp", "Choanotaenia sp", "Strongylid")
+columns_to_sum <- c("Capillaria sp.", "Eimeria sp.", "Ascarids", "Syngamus sp.", "Tetrameres sp.",
+                   "Isospora sp.", "Monocystis sp.", "Raillietina sp.", "Choanotaenia sp.", "Strongylid")
 # Create the 'ParasiteDiversity' column by summing the specified columns for each row
 parasite.filter$ParasiteDiversity <- rowSums(parasite.filter[, columns_to_sum], na.rm = TRUE)
 
@@ -179,58 +177,59 @@ parasite.filter$ParasiteDiversity <- rowSums(parasite.filter[, columns_to_sum], 
 
 #' Left join filtered viral data and nests together
 nests.scaled <- left_join(parasite.filter.1, nests.scaled) %>%
-dplyr::select(-`Capillaria sp`, -`Eimeria sp`, -Ascarids, -`Syngamus sp`,
-                -`Tetrameres sp`, -`Isospora sp`, -`Monocystis sp`, -`Raillietina sp`, 
-                -`Choanotaenia sp`, -`Strongylid`)
+dplyr::select(-`Capillaria sp.`, -`Eimeria sp.`, -Ascarids, -`Syngamus sp.`,
+                -`Tetrameres sp.`, -`Isospora sp.`, -`Monocystis sp.`, -`Raillietina sp.`, 
+                -`Choanotaenia sp.`, -`Strongylid`)
 
 nests.scaled$ParasiteDiversity <- scale(nests.scaled$ParasiteDiversity)
 nests.scaled$ParasiteDiversity <- as.numeric(nests.scaled$ParasiteDiversity)
+nests.scaled$LPDV <- as.numeric(nests.scaled$LPDV)
 
 
 ################################################################################
 ## Data Prep- Lanscape-Level Covs
 
 #' Create sf object and check projection using mapview
-nests.sf <- st_as_sf(nests.scaled, coords = c("Long", "Lat"), crs = 4326) 
-mapview(nests.sf)
-
-#' Load in land cover information
-pa.nlcd <- terra::rast("Data Management/Rasters/NLCD/Pennsylvania/pa.nlcd.tif")
-pa.roads.prim <- terra::rast("Data Management/Rasters/Roads/Pennsylvania/PaRoadRast.Prim.tiff")
-pa.roads.sec <- terra::rast("Data Management/Rasters/Roads/Pennsylvania/PaRoadRast.Sec.tiff")
-
-#' Extract landcover point value for each nest
-nests.landcov <- terra::extract(pa.nlcd, nests.sf) %>%
-  dplyr::rename("landuse" = Class)
-
-#' Create dummy variables for land cover classification
-#' Zero nests were placed in water so I have removed it from the analysis
-nests.scaled$Agriculture <- ifelse(nests.landcov$landuse == "Agriculture", 1, 0)
-nests.scaled$Developed <- ifelse(nests.landcov$landuse == "Developed", 1, 0)
-nests.scaled$Deciduous <- ifelse(nests.landcov$landuse == "Deciduous Forest", 1, 0)
-nests.scaled$Evergreen <- ifelse(nests.landcov$landuse == "Evergreen Forest", 1, 0)
-nests.scaled$Mixed <- ifelse(nests.landcov$landuse == "Mixed Forest", 1, 0)
-nests.scaled$Grassland <- ifelse(nests.landcov$landuse == "Grassland/Shrub", 1, 0)
-
-
-#' Extract distance from primary and secondary road structures
-nests.prim.roads <- terra::extract(pa.roads.prim, nests.sf) %>%
-  dplyr::rename("Primary" = layer)
-
-nests.sec.roads <- terra::extract(pa.roads.sec, nests.sf) %>%
-  dplyr::rename("Secondary" = layer)
+#' nests.sf <- st_as_sf(nests.scaled, coords = c("Long", "Lat"), crs = 4326) 
+#' mapview(nests.sf)
+#' 
+#' #' Load in land cover information
+#' pa.nlcd <- terra::rast("Data Management/Rasters/NLCD/Pennsylvania/pa.nlcd.tif")
+#' pa.roads.prim <- terra::rast("Data Management/Rasters/Roads/Pennsylvania/PaRoadRast.Prim.tiff")
+#' pa.roads.sec <- terra::rast("Data Management/Rasters/Roads/Pennsylvania/PaRoadRast.Sec.tiff")
+#' 
+#' #' Extract landcover point value for each nest
+#' nests.landcov <- terra::extract(pa.nlcd, nests.sf) %>%
+#'   dplyr::rename("landuse" = Class)
+#' 
+#' #' Create dummy variables for land cover classification
+#' #' Zero nests were placed in water so I have removed it from the analysis
+#' nests.scaled$Agriculture <- ifelse(nests.landcov$landuse == "Agriculture", 1, 0)
+#' nests.scaled$Developed <- ifelse(nests.landcov$landuse == "Developed", 1, 0)
+#' nests.scaled$Deciduous <- ifelse(nests.landcov$landuse == "Deciduous Forest", 1, 0)
+#' nests.scaled$Evergreen <- ifelse(nests.landcov$landuse == "Evergreen Forest", 1, 0)
+#' nests.scaled$Mixed <- ifelse(nests.landcov$landuse == "Mixed Forest", 1, 0)
+#' nests.scaled$Grassland <- ifelse(nests.landcov$landuse == "Grassland/Shrub", 1, 0)
+#' 
+#' 
+#' #' Extract distance from primary and secondary road structures
+#' nests.prim.roads <- terra::extract(pa.roads.prim, nests.sf) %>%
+#'   dplyr::rename("Primary" = layer)
+#' 
+#' nests.sec.roads <- terra::extract(pa.roads.sec, nests.sf) %>%
+#'   dplyr::rename("Secondary" = layer)
 
 #' Paste in distance from primary and secondary roads
-nests.scaled$Primary <- nests.prim.roads$Primary
-nests.scaled$Secondary <- nests.sec.roads$Secondary
-
-#' Scale continous predictors
-nests.scaled$Primary <- scale(nests.scaled$Primary) 
-nests.scaled$Secondary <- scale(nests.scaled$Secondary)
-
-#' Change predictors back to numeric 
-nests.scaled$Primary <- as.numeric(nests.scaled$Primary)
-nests.scaled$Secondary <- as.numeric(nests.scaled$Secondary)
+#' nests.scaled$Primary <- nests.prim.roads$Primary
+#' nests.scaled$Secondary <- nests.sec.roads$Secondary
+#' 
+#' #' Scale continous predictors
+#' nests.scaled$Primary <- scale(nests.scaled$Primary) 
+#' nests.scaled$Secondary <- scale(nests.scaled$Secondary)
+#' 
+#' #' Change predictors back to numeric 
+#' nests.scaled$Primary <- as.numeric(nests.scaled$Primary)
+#' nests.scaled$Secondary <- as.numeric(nests.scaled$Secondary)
 
 #' Assign 1 if the NestFate "Hatched", otherwise assign 0
 nests.scaled$NestFate <- ifelse(nests.scaled$NestFate == "Hatched", 1, 0)
@@ -271,16 +270,16 @@ nests.scaled$NestFate <- ifelse(nests.scaled$NestFate == "Hatched", 1, 0)
 ## Data Prep- Behavior Covariates
 
 #nests.scaled <- readRDS("nests.scaled.RDS")
-
-hens.behav.out <- left_join(hens.all.sf.buffer_summary, dist.traveled.cov)
-
-nests.scaled <- nests.scaled %>%
-  st_drop_geometry() %>%
-  left_join(hens.behav.out, nests.scaled, by = "NestID") %>%
-  dplyr::mutate(IncubationConstancy = scale(IncubationConstancy)) %>%
-  dplyr::mutate(IncubationConstancy = as.numeric(IncubationConstancy)) %>%
-  dplyr::mutate(sum_sl = scale(sum_sl)) %>%
-  dplyr::mutate(sum_sl = as.numeric(sum_sl)) %>%
-  dplyr::filter(TotalLocations != "NA") %>%
-  dplyr::filter(NestID != "4255_2022_1")
+# 
+# hens.behav.out <- left_join(hens.all.sf.buffer_summary, dist.traveled.cov)
+# 
+# nests.scaled <- nests.scaled %>%
+#   st_drop_geometry() %>%
+#   left_join(hens.behav.out, nests.scaled, by = "NestID") %>%
+#   dplyr::mutate(IncubationConstancy = scale(IncubationConstancy)) %>%
+#   dplyr::mutate(IncubationConstancy = as.numeric(IncubationConstancy)) %>%
+#   dplyr::mutate(sum_sl = scale(sum_sl)) %>%
+#   dplyr::mutate(sum_sl = as.numeric(sum_sl)) %>%
+#   dplyr::filter(TotalLocations != "NA") %>%
+#   dplyr::filter(NestID != "4255_2022_1")
 

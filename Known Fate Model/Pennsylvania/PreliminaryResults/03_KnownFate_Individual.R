@@ -9,7 +9,7 @@
 #'  
 #' **Purpose**: This script uses derived incubation start and end dates to fit a Bayesian known fate model 
 #' **Key Changes**: This script uses the cloglog link instead of the logit link for modeling daily nest survival
-#' **Last Updated**: 2/19/25
+#' **Last Updated**: 3/13/25
 
 
 ################################################################################
@@ -18,6 +18,7 @@
 library(nimble)
 library(MCMCvis)
 library(tidyverse)
+library(matrixStats)
 
 load("Data Management/RData/Known Fate/Pennsylvania/PreliminaryResults/20250219_PreliminaryResults_Individual.RData")
 
@@ -37,7 +38,7 @@ min(nests.scaled$startI)
 max(nests.scaled$endI)
 
 # Subset nests.scaled to remove nests before 4-22 regardless of year
-nests.scaled <- nests.scaled2[format(nests.scaled2$startI, "%m-%d") >= "04-22",]
+nests.scaled <- nests.scaled[format(nests.scaled$startI, "%m-%d") >= "04-22",]
 
 inc.dates <- sort(unique(c(nests.scaled$startI, nests.scaled$endI)))
 inc.dates <- seq(as.Date("2022-04-22"), as.Date("2022-09-16"), by = 1)
@@ -100,12 +101,16 @@ summary(nests.ready)
 #' Model parameters
 X <- cbind(
   rep(1, nrow(nests.ready)),                              # Intercept (1)
-  nests.ready$age,                                        # Age
   nests.ready$LPDV,                                       # LPDV
   nests.ready$ParasiteDiversity,                          # Parasite Diversity
-  nests.ready$LPDV * nests.ready$ParasiteDiversity,       # Interaction between LPDV & Parasites
-  nests.ready$age * nests.ready$ParasiteDiversity         # Interaction between Age & Parasites
+  nests.ready$LPDV * nests.ready$ParasiteDiversity        # Interaction
 ) 
+
+#' Use ggpairs to visualize correlations
+ggpairs(as.data.frame(X), 
+        upper = list(continuous = "cor"),
+        diag = list(continuous = "barDiag"),
+        lower = list(continuous = "points"))
 
 ################################################################################
 ## Nimble Model
@@ -175,11 +180,12 @@ nimbleMCMC_samples <- nimbleMCMC(
 )
 
 summary(nimbleMCMC_samples)
-v = colMeans(nimbleMCMC_samples)
+colMeans(nimbleMCMC_samples[,1:4])
+colSds(nimbleMCMC_samples[,1:4])
 MCMCtrace(nimbleMCMC_samples, pdf = FALSE)
 
 #' Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
-beta_samples <- nimbleMCMC_samples[, 1:6]
+beta_samples <- nimbleMCMC_samples[, 1:4]
 
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
@@ -189,11 +195,9 @@ samples_df <- as.data.frame(samples_matrix)
 
 #' Create a vector of new names
 new_names <- c("Intercept", 
-               "Age Class",
                "LPDV",
                "Parasite Diversity",
-               "LPDV * Parasite Diversity",
-               "Age Class * Parasite Diversity")
+               "LPDV * Parasite Diversity")
 
 #' Assign the variable names to the columns of the beta_samples
 colnames(samples_df) <- new_names
@@ -257,21 +261,19 @@ mean_estimates
 
 #' Organize variables into levels to be displayed
 #' Filter out the intercept
-mean_estimates <- mean_estimates %>%
+mean_estimates3 <- mean_estimates %>%
   dplyr::mutate(parameter = factor(parameter, 
                                    levels = c(
-                                     "LPDV * Parasite Diversity",
-                                     "Age Class * Parasite Diversity",
                                      "LPDV",
                                      "Parasite Diversity",
-                                     "Age Class"
+                                     "LPDV * Parasite Diversity",
+                                     "Age * Parasite Diversity"
                                    )))
 mean_estimates
 
 ################################################################################
 ## Beta Plot 
 
-#' Beta estimates and associated 90% credible intervals 
 p2.betas <- ggplot(mean_estimates, 
                    aes(x = parameter, 
                        y = mean_estimate, 
@@ -287,11 +289,52 @@ p2.betas <- ggplot(mean_estimates,
                                 "Landscape" = "#D65F5F")) +  
   scale_shape_manual(values = c("Individual" = 15, 
                                 "Nest" = 17,
-                                "Landscape" = 16))+  
-  coord_flip()+
+                                "Landscape" = 16)) +  
   theme(
     axis.title.x = element_text(margin = margin(t = 10)),
-    axis.title.y = element_text(margin = margin(r = 12))
-    
+    axis.title.y = element_text(margin = margin(r = 12)),
+    axis.text.x = element_text(angle = 45, hjust = 1),   
+    axis.text.y = element_text(angle = 0)   
   )
+
 p2.betas
+
+
+# Save multiple objects in a single RData file
+save(p2.betas, mean_estimates3, file = "p2.betas.disease.PA.RData")
+
+
+################################################################################
+## Plot Interaction
+
+################################################################################
+## Plot Interaction
+
+#' Check data
+parasite_diversity_values <- unique(nests.ready$ParasiteDiversity)
+beta_mean <- colMeans(samples_df)
+
+#' Calculate lpdv0 and lpdv1 for each level of ParasiteDiversity
+lpdv0 <- icloglog(beta_mean[1] + beta_mean[2]*0 + beta_mean[3]*parasite_diversity_values + beta_mean[4]*0*parasite_diversity_values)
+lpdv1 <- icloglog(beta_mean[1] + beta_mean[2]*1 + beta_mean[3]*parasite_diversity_values + beta_mean[4]*1*parasite_diversity_values)
+
+#' Dataframe with everything needed
+data <- data.frame(
+  ParasiteDiversity = rep(parasite_diversity_values, 2),
+  lpdv = c(lpdv0, lpdv1),
+  Infection = rep(c("No LPDV Infection", "LPDV Infection"), each = length(parasite_diversity_values))
+)
+
+#' Plot Interaction
+ggplot(data, aes(x = ParasiteDiversity, y = lpdv, color = Infection, group = Infection)) +
+  geom_line() +   
+  geom_point() +   
+  scale_color_manual(values = c("No LPDV Infection" = "black", "LPDV Infection" = "red")) + 
+  xlab("Parasite Diversity") +
+  ylab("Daily Nest Survival Probability")+
+  labs(color = "Infection Status") +
+  scale_x_continuous(breaks = c(1, 2)) +  
+  theme_minimal() +
+  theme(axis.title.y = element_text(margin = margin(r = 8))) 
+
+################################################################################
