@@ -1,11 +1,7 @@
-
 #'---
 #' title: Nest-site selection of wild turkeys in Pennsylvania (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: *InsertDate*_Landcover.RData
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
 #' **Purpose**: This script obtains NLCD values for used and available nests in each state
@@ -134,4 +130,4 @@ md.nests.landcov <- cbind(md.nests, landcov, by = "NestID") %>%
 ## Save RData file *InsertDate*_Landcover.RData
 
 ################################################################################
-################################################################################
+###############################################################################X

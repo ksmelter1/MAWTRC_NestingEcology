@@ -1,14 +1,11 @@
 #'---
-#' title: Nest-site selection of female wild turkeys in Maryland (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' title: Nest-site selection of wild turkeys in Maryland (an SSF analysis)
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: *InsertDate*_NimbleResults.RData
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script creates a Bayesian conditional logistic regression model for nest-site selection in JAGs using the gathered covariates 
-#' **Last Updated**: 1/18/25
+#' **Purpose**: This script fits a nest-site selection model for Maryland
+#' **Last Updated**: 5/12/2025
 
 ################################################################################
 ## Load Packages 
@@ -35,14 +32,14 @@ lapply(packages, load_packages)
 #' Load in RData
 load("Data Management/RData/Nest-Site Selection/Covs/Multi-State/Manuscript/02_Covs_AllStates_Ready.RData")
 
+#' Obtain data from Maryland and drop geometry columns
+#' Had some NA nest IDs that I removed
 nest.data <- md.nests.covs %>%
   st_drop_geometry() %>%
   drop_na()
 str(md.nests.covs)
 
-used <- nest.data %>%
-  dplyr::filter(Case == "1")
-table(used$landuse)
+#' Subset dataframe and rename columns 
 nest.data <- nest.data %>%
   dplyr::select(NestID, BandID,
                 Case, Developed, Deciduous, Mixed, Evergreen, Pasture, Crop,
@@ -54,6 +51,7 @@ nest.data <- nest.data %>%
 nest.data <- nest.data %>% 
   dplyr::mutate(across(everything(), ~ iconv(., to = "UTF-8")))
 
+#' Convert predictors to numeric
 nest.data <- nest.data %>%
   dplyr::mutate(Primary = as.numeric(Primary)) %>%
   dplyr::mutate(Secondary = as.numeric(Secondary)) %>%
@@ -69,20 +67,24 @@ nest.data <- nest.data %>%
 str(nest.data)
 glimpse(nest.data)
 
+#' Scale continous predictors
 nest.data <- nest.data %>%
   dplyr::mutate(Primary = scale(Primary)) %>%
   dplyr::mutate(Secondary = scale(Secondary)) 
 glimpse(nest.data)
 str(nest.data)
 
+#' Convert scaled predictors back to numeric
 nest.data <- nest.data %>%
   dplyr::mutate(Primary = as.numeric(Primary)) %>%
   dplyr::mutate(Secondary = as.numeric(Secondary))
 
+#' Convert case to numeric
 nest.data <- nest.data %>%
   st_drop_geometry() %>%
   dplyr::mutate(Case = as.numeric(Case))
 
+#' Order nest.data by NestID
 nest.data <- nest.data[order(nest.data$NestID),]
 
 #' Change Nest_ID_V to numeric 
@@ -97,6 +99,7 @@ nest.data <- nest.data %>%
   group_by(NestID) %>%
   mutate(str_ID=cur_group_id())
 
+#' Check
 str(nest.data)
 glimpse(nest.data)
 summary(nest.data)
@@ -110,14 +113,19 @@ fill_na_with_zero <- function(df) {
 
 #' Apply the function
 nest.data.ready <- fill_na_with_zero(nest.data)
+
+#' Check
 summary(nest.data.ready)
 glimpse(nest.data.ready)
-
 cor(nest.data.ready$Primary, nest.data.ready$Secondary)
 
 
 ################################################################################
 ## Nimble Model
+
+#' Conditional logistic regression
+#' Prior for stratum-specific intercept variance set to 10^6
+#' Prior for betas set to 0,1
 
 nestmodel<-nimbleCode({
   for (i in 1:I){
@@ -190,6 +198,7 @@ new_names <- c("Intercept", "Distance to Primary Road", "Distance to Secondary R
 
 #' Assign the variable names to the columns of the beta_samples
 colnames(samples_df) <- new_names
+
 
 ################################################################################
 ## Check Proportion of Developed Samples less than 0

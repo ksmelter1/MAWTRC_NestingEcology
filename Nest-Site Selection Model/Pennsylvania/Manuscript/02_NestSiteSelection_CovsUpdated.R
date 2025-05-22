@@ -1,15 +1,12 @@
-
 #'---
 #' title: Nest-site selection of wild turkeys in Pennsylvania (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: *InsertDate*_Covs_AllStates_Ready
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script calculates the distance from each 30m x 30m raster cell to the nearest primary and secondary road
-#' **Last Updated**: 2/26/25
+#' **Purpose**: This script obtains NLCD values for used and available nests in each state
+#' **Last Updated**: 5/12/2025
+
 
 ################################################################################
 ## Load Packages 
@@ -389,7 +386,7 @@ md.nests.covs <- cbind(md.nests.landcov, md.nests.landcov.sf.roads) %>%
 
 md.nests.covs$BandID <- str_sub(md.nests.covs$NestID, 1, 4)
 
-#' Convert land cover classifications to a categorical variable and create separate columns
+#' Create dummy variables for land cover classifications
 md.nests.covs$Pasture <- ifelse(md.nests.covs$landuse == "Pasture", 1, 0)
 md.nests.covs$Crop <- ifelse(md.nests.covs$landuse == "Crop", 1, 0)
 md.nests.covs$Developed <- ifelse(md.nests.covs$landuse == "Developed", 1, 0)
@@ -405,5 +402,4 @@ md.nests.covs$Water <- ifelse(md.nests.covs$landuse == "Open Water", 1, 0)
 ## Save RData file *InsertDate_Covs
 
 ################################################################################
-################################################################################
-
+###############################################################################X

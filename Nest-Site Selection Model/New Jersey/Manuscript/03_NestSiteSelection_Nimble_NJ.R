@@ -1,14 +1,12 @@
 #'---
-#' title: Nest-site selection of female wild turkeys in Pennsylvania (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' title: Nest-site selection of wild turkeys in New Jersey (an SSF analysis)
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: *InsertDate*_NimbleResults.RData
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script creates a Bayesian conditional logistic regression model for nest-site selection in JAGs using the gathered covariates 
-#' **Last Updated**: 1/18/25
+#' **Purpose**: This script fits a nest-site selection model for New Jersey
+#' **Last Updated**: 5/12/2025
+
 
 ################################################################################
 ## Load Packages 
@@ -39,10 +37,12 @@ nj.sample <- read_csv("Samples/New Jersey/NestingSample_NJ.csv")
 nj.sample
 length(unique(nj.sample$NestID))
 
+#' Obtain data from New Jersey 
 nest.data <- nj.nests.covs %>%
   st_drop_geometry()
 str(nj.nests.covs)
 
+#' Subset and rename columns 
 nest.data <- nest.data %>%
   dplyr::select(NestID, BandID,
                 Case, Developed, Deciduous, Mixed, Evergreen, Pasture, Crop,
@@ -50,6 +50,7 @@ nest.data <- nest.data %>%
   dplyr::rename("Primary" = primary) %>%
   dplyr::rename("Secondary" = secondary) 
 
+#' Create consistent sample with known fate model
 nest.data <- right_join(nest.data,nj.sample)
 length(unique(nest.data$NestID))
 
@@ -57,6 +58,7 @@ length(unique(nest.data$NestID))
 nest.data <- nest.data %>% 
   dplyr::mutate(across(everything(), ~ iconv(., to = "UTF-8")))
 
+#' Convert columns to numeric
 nest.data <- nest.data %>%
   dplyr::mutate(Primary = as.numeric(Primary)) %>%
   dplyr::mutate(Secondary = as.numeric(Secondary)) %>%
@@ -72,20 +74,24 @@ nest.data <- nest.data %>%
 str(nest.data)
 glimpse(nest.data)
 
+#' Scale continous predictors
 nest.data <- nest.data %>%
   dplyr::mutate(Primary = scale(Primary)) %>%
   dplyr::mutate(Secondary = scale(Secondary)) 
 glimpse(nest.data)
 str(nest.data)
 
+#' Convert scaled predictors back to numeric
 nest.data <- nest.data %>%
   dplyr::mutate(Primary = as.numeric(Primary)) %>%
   dplyr::mutate(Secondary = as.numeric(Secondary))
 
+#' Convert case to numeric
 nest.data <- nest.data %>%
   st_drop_geometry() %>%
   dplyr::mutate(Case = as.numeric(Case))
 
+#' Order nest.data by NestID
 nest.data <- nest.data[order(nest.data$NestID),]
 
 #' Change Nest_ID_V to numeric 
@@ -100,6 +106,7 @@ nest.data <- nest.data %>%
   group_by(NestID) %>%
   mutate(str_ID=cur_group_id())
 
+#' Check
 str(nest.data)
 glimpse(nest.data)
 summary(nest.data)
@@ -113,11 +120,13 @@ fill_na_with_zero <- function(df) {
 
 #' Apply the function
 nest.data.ready <- fill_na_with_zero(nest.data)
+
+#' Check
 summary(nest.data.ready)
 glimpse(nest.data.ready)
+cor(nest.data.ready$Primary, nest.data.ready$Secondary)
 
-
-###############################################
+################################################################################
 ## Nimble Model
 
 nestmodel<-nimbleCode({

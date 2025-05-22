@@ -1,14 +1,11 @@
 #'---
-#' title: Nest-site selection of female wild turkeys in Pennsylvania (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' title: Nest-site selection of wild turkeys in Pennsylvania (an SSF analysis)
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: *InsertDate*_NimbleResults.RData
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script creates a Bayesian conditional logistic regression model for nest-site selection in JAGs using the gathered covariates 
-#' **Last Updated**: 5/9/25
+#' **Purpose**: This script fits a nest-site selection model for Pennsylvania
+#' **Last Updated**: 5/12/2025
 
 ################################################################################
 ## Load Packages 
@@ -41,30 +38,25 @@ load("Data Management/RData/Nest-Site Selection/Covs/Multi-State/Manuscript/02_C
 Sample_PA <- read_csv("Samples/Pennsylvania/NestingSample_PA.csv")
 Sample_PA
 
+#' Drop geometry column and create unique identifier for NestID
 pa.nests.covs <- sf::st_drop_geometry(pa.nests.covs)
 pa.nests.covs$NestID1 <- paste(pa.nests.covs$NestID, pa.nests.covs$PlotType, sep = "_")
 
+#' Read in basal area data
 basal_summary <- read_csv("Data Management/Csvs/Processed/Covariates/Pennsylvania/BasalArea.csv")
 
 #' Keep only samples that exist in Sample_PA in pa.nests.covs
 pa.nests.covs.1 <- right_join(pa.nests.covs, Sample_PA)
 pa.nests.covs.2 <- right_join(basal_summary, pa.nests.covs.1) 
 
+#' Zero values represent sites with no trees for basal area
 pa.nests.covs.2 <- pa.nests.covs.2 %>%
   replace_na(list(Basal = 0))
 
-  
 #' Rename object
 nest.data <- pa.nests.covs.2 
 str(nest.data)
 summary(nest.data)
-
-used <- nest.data %>%
-  dplyr::filter(Case == "1")
-table(used$landuse)
-
-#' Remove line 577
-nest.data <- nest.data[-577, ]
 
 #' Subset dataframe and rename columns 
 nest.data <- nest.data %>%
@@ -167,12 +159,19 @@ fill_na_with_zero <- function(df) {
 
 #' Apply the function
 nest.data.ready <- fill_na_with_zero(nest.data)
+
+#' Check
 summary(nest.data.ready)
 glimpse(nest.data.ready)
+cor(nest.data.ready$Primary, nest.data.ready$Secondary)
 
 
 ################################################################################
 ## Nimble Model
+
+#' Conditional logistic regression
+#' Prior for stratum-specific intercept variance set to 10^6
+#' Prior for betas set to 0,1
 
 nestmodel<-nimbleCode({
   for (i in 1:I){
@@ -194,7 +193,6 @@ nestmodel<-nimbleCode({
 )
 
 #' Model parameters
-#' Wetland is not included in the model due to a small sample size
 X<- cbind(
   rep(1, nrow(nest.data.ready)),   # Intercept (1)
   nest.data.ready$Primary,         # Distance to Primary Road
@@ -283,5 +281,5 @@ head(samples_df)
 ## Save RData file *InsertDate_NimbleResults
 
 ################################################################################
-################################################################################
+###############################################################################X
 
