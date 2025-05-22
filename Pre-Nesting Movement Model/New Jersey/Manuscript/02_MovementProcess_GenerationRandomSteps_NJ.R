@@ -1,19 +1,15 @@
-
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: RandomSteps_Prep(R Workspace)
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
 #' **Purpose**: This script creates tracks and extracts covariates using the amt package
-#' **Last Updated**: 1/25/25
+#' **Last Updated**: 2/25/25
+
 
 ################################################################################
-## Load Packages 
-
+## Load Packages and Data
 
 #' Vector of package names
 packages <- c("sf",
@@ -36,10 +32,10 @@ load_packages <- function(package_name) {
 #' Apply the function to each package name
 lapply(packages, load_packages)
 
-
+#' Load in pre-nesting GPS data from the previous script
 load("Data Management/RData/Pre-Nesting Movement Model/New Jersey/Covariates/Movebank_NJ_buffer.RData")
 
-#' Load NLCD Raster
+#' Load NLCD Raster for New Jersey
 nj.nlcd <- terra::rast("Data Management/Rasters/NLCD/New Jersey/nj.nlcd.tif")
 plot(nj.nlcd)
 
@@ -123,7 +119,6 @@ sl.sum <- stps %>%
   group_by(id) %>%
   summarise(sum_sl = sum(sl_, na.rm = TRUE)) %>%
   ungroup()
-
 
 #' Create random steps
 #' Exponential step length used due to issues with formatting gamma

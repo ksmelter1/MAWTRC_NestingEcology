@@ -1,19 +1,15 @@
-
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: RandomSteps_Prep(R Workspace)
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
 #' **Purpose**: This script creates tracks and extracts covariates using the amt package
 #' **Last Updated**: 1/25/25
 
-################################################################################
-## Load Packages 
 
+################################################################################
+## Load Packages and Data
 
 #' Vector of package names
 packages <- c("sf",

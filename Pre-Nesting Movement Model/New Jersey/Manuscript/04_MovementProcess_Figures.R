@@ -1,26 +1,21 @@
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: RandomSteps_Prep(R Workspace)
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script creates beta estimate and prediction plots similar to the nest-site selection model
+#' **Purpose**: This script creates beta estimate and prediction plots for the pre-nesting movement model
 #' **Last Updated**: 2/9/25
 
 ################################################################################
-## Load Packages 
+## Load Packages and Data
 
 #' Vector of package names
 packages <- c("tidyverse",
               "gridExtra",
               "stringr")
 
-
 #' Function to load a package or install it if not already installed
-#' Found this function 
 load_packages <- function(package_name) {
   if (!require(package_name, character.only = TRUE)) {
     install.packages(package_name, dependencies = TRUE)
@@ -31,11 +26,9 @@ load_packages <- function(package_name) {
 #' Apply the function to each package name
 lapply(packages, load_packages)
 
-
-################################################################################
-## Read in Data
-
+#' Read in named samples from New Jersey
 samples_df <- readRDS("Data Management/RData/Pre-Nesting Movement Model/New Jersey/Covariates/Manuscript/20250515_samples_df_NJ_buffer.RDS")
+
 
 ################################################################################
 ## Data Prep for Beta Plot
@@ -59,7 +52,7 @@ credible_intervals <- samples_long %>%
   )
 
 #' Calculate mean estimates for each parameter
-#' Calculate 95% credible intervals using quantiles
+#' Calculate 90% credible intervals using quantiles
 mean_estimates <- samples_long %>%
   dplyr::group_by(parameter) %>%
   summarise(
@@ -93,7 +86,7 @@ mean_estimates3 <- mean_estimates %>%
                                               "Distance to Secondary Road"
                                             ))) 
 
-#########################
+##############
 ## Beta Plot 
 
 #' Figure for Presentations
@@ -115,7 +108,7 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
   )
 p2.betas
 
-#' Figure for manuscripts
+#' Figure for writing
 p2.betas <- ggplot(mean_estimates3, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5, stroke = 1.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
@@ -129,7 +122,12 @@ p2.betas <- ggplot(mean_estimates3, aes(x = parameter, y = mean_estimate, color 
     axis.title.x = element_text(margin = margin(t = 10), hjust = 0.67))
 p2.betas
 
-save(p2.betas, mean_estimates3, file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Pre-Nesting Movement/pre.nj.betas.buffer.RData", overwrite = T)
+#' Save as outputs as RData object
+save(p2.betas,
+     mean_estimates3,
+     file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Pre-Nesting Movement/pre.nj.betas.buffer.RData",
+     overwrite = T)
+
 
 ################################################################################
 ## Prediction Plots
@@ -149,3 +147,6 @@ p1.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() 
     axis.title.x = element_text(margin = margin(t = 10)), 
     axis.title.y = element_text(margin = margin(t = 10), vjust = 3))
 p1.predict
+
+################################################################################
+###############################################################################X

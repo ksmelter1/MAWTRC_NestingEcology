@@ -1,13 +1,10 @@
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis) in NIMBLE
-#' authors: "K. Smelter, F. Buderman"
+#' authors: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output:
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script fits SSF models in frequentist and Bayesian frameworks and extracts coefficient data
+#' **Purpose**: This script fits SSF models in a Bayesian framework and outputs model results
 #' **Last Updated**: 1/25/25
 
 
@@ -22,7 +19,6 @@ packages <- c("tidyverse",
 
 
 #' Function to load a package or install it if not already installed
-#' Found this function 
 load_packages <- function(package_name) {
   if (!require(package_name, character.only = TRUE)) {
     install.packages(package_name, dependencies = TRUE)
@@ -33,29 +29,28 @@ load_packages <- function(package_name) {
 #' Apply the function to each package name
 lapply(packages, load_packages)
 
-
+#' Load in RData with pre-nesting GPS data and covariates
+#' Remove x object generated with random steps
 load("Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/Covariates/Manuscript/Covs_Ready_Buffer.RData") 
-
 rm(x)
-
-dat_2.ready <- final_filtered_random_steps %>%
-  dplyr::mutate(secondary = scale(secondary)) %>%
-  dplyr::mutate(primary = scale(primary)) 
-
-glimpse(dat_2.ready)
-
-dat_2.ready <- dat_2.ready %>% 
-  dplyr::mutate(secondary = as.numeric(secondary)) %>%
-  dplyr::mutate(primary = as.numeric(primary)) 
-
-glimpse(dat_2.ready)
 
 
 ################################################################################
 ## Organize Data 
 
-#' Check
+#' Scale continous predictors
+dat_2.ready <- final_filtered_random_steps %>%
+  dplyr::mutate(secondary = scale(secondary)) %>%
+  dplyr::mutate(primary = scale(primary)) 
+glimpse(dat_2.ready)
+
+#' Convert continous predictors back to numeric
+dat_2.ready <- dat_2.ready %>% 
+  dplyr::mutate(secondary = as.numeric(secondary)) %>%
+  dplyr::mutate(primary = as.numeric(primary)) 
+glimpse(dat_2.ready)
 str(dat_2.ready)
+summary(dat_2.ready)
 
 #' Change ID to numeric
 dat_2.ready$id <- gsub("_", "", dat_2.ready$id)
@@ -69,9 +64,9 @@ dat_2.ready$NA_ID <- paste(dat_2.ready$id,
 #' Change NA_ID to integer
 dat_2.ready$NA_ID <- gsub("_", "", dat_2.ready$NA_ID)
 dat_2.ready$NA_ID<- as.numeric(dat_2.ready$NA_ID)
-
 class(dat_2.ready)
 str(dat_2.ready)
+summary(dat_2.ready)
 
 #' Add numerical variable for animals:
 dat_2.ready$ANIMAL_ID <- as.numeric(as.factor(dat_2.ready$id))
@@ -99,7 +94,7 @@ fill_NA_with_value <- function(df, value = 0) {
   return(df)
 }
 
-#' Apply the function to fill NA values with 0.0001
+#' Apply the function to fill NA values with 0 (Mean for scaled continous variables and wasn't used for categorical)
 dat_2.ready <- fill_NA_with_value(dat_2.ready)
 
 #' Check
@@ -121,11 +116,18 @@ X <- cbind(
   dat_2.ready$Grassland,       # Grassland    
   dat_2.ready$Wetland)         # Wetland
 
+#' Keep only design matrix (X) and data columns
+#' Cuts down on processing
 rm(list = setdiff(ls(), c("dat_2.ready", "X")))
 
 
 ################################################################################
 ## Nimble Model
+
+#' Step-selection function in a Bayesian Framework
+#' Conditional logistic regression
+#' Set prior for stratum-specific intercept to 10^6
+#' Set prior for betas to 0,1 which is a standard uninformative prior for a logistic regression
 
 movemodel <- nimbleCode({
   for (i in 1:I){
@@ -180,8 +182,6 @@ nimbleMCMC_samples <- nimbleMCMC(
 
 end <- Sys.time()
 
-#nimbleMCMC_samples <- readRDS("Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/Model Results/20250227_MovementRunPA.RDS")
-
 #' Print the means and standard deviations of the posterior samples for the beta coefficients
 colMeans(nimbleMCMC_samples[, 43442:43451])
 colSds(nimbleMCMC_samples[, 43442:43451])
@@ -208,4 +208,8 @@ colnames(samples_df) <- new_names
 #' View the renamed data frame
 head(samples_df)
 
+#' Output named samples from pre-nesting movement model
 saveRDS(samples_df, "Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/Model Results/20250513_samples_df.RDS")
+
+################################################################################
+###############################################################################X

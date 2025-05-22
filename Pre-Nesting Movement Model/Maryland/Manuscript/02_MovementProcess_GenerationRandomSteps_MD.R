@@ -1,18 +1,15 @@
-
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: RandomSteps_Prep(R Workspace)
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
 #' **Purpose**: This script creates tracks and extracts covariates using the amt package
-#' **Last Updated**: 1/25/25
+#' **Last Updated**: 2/25/25
+
 
 ######################################
-## Load Packages 
+## Load Packages and Data
 
 
 #' Vector of package names
@@ -36,10 +33,10 @@ load_packages <- function(package_name) {
 #' Apply the function to each package name
 lapply(packages, load_packages)
 
-
+#' Load Pre-Nesting GPS Data
 load("Data Management/RData/Pre-Nesting Movement Model/Maryland/Covariates/Movebank_MD_Buffer.RData")
 
-#' Load NLCD Raster
+#' Load NLCD Raster for Maryland
 md.nlcd <- terra::rast("Data Management/Rasters/NLCD/Maryland/md.nlcd.tif")
 plot(md.nlcd)
 
@@ -53,7 +50,8 @@ primary <- terra::rast("Data Management/Rasters/Roads/Maryland/MdRoadRast.Prim.t
 #' Distance to secondary roads Raster
 secondary <- terra::rast("Data Management/Rasters/Roads/Maryland/MdRoadRast.Sec.tiff")
 
-##############################
+
+################################################################################
 ## Create and Save Tracks 
 
 #' I follow the AMT Vignette with multiple individuals
@@ -151,6 +149,7 @@ table(random_steps$landuse, random_steps$case_)
 which(random_steps$step_id_==5)
 table(random_steps$case_)
 table(random_steps$landuse)
+
 
 ################################################################################
 ##  Consolidate Open Water Category

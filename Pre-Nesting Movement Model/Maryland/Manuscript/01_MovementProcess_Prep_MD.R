@@ -1,14 +1,14 @@
 
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
 #' output: MovementProcess_Prep.RData (R workspace)
 #'   html_document: 
 #'     toc: true
 #'---
 #'  
-#' **Purpose**: This script downloads movement data associated with each hens nesting attempt from movebank and exports hen movement data as RDS files.
+#' **Purpose**: This script downloads movement data associated with each hens nesting attempt from movebank 
 #' **Last Updated**: 2/25/25
 
 
@@ -38,20 +38,17 @@ lapply(packages, load_packages)
 md.nests <- read_csv("Data Management/Csvs/Processed/Nests/Nests/Maryland/20250219_CleanedNests_2022_2023_MD.csv")
 md.nests
 
+#' Constrain to nests that were used (Case = 1) and not randomly generated nests available to hens
 md.nests <- md.nests %>%
   dplyr::filter(Case == "1")
 md.nests
 
+#' Read in captures
 captures <- read_csv("Data Management/Csvs/Raw/Captures/captures_md.csv")
 captures
 
 ################################################################################
 ## Data Management
-
-#' Change 99s into NA Values
-md.nests$EggsHatched[md.nests$EggsHatched == 99] <- NA
-md.nests$EggsUnhatched[md.nests$EggsUnhatched == 99] <- NA
-md.nests$EggsDestroyed[md.nests$EggsDestroyed == 99] <- NA
 
 #' Create clutch size column and remove unnecessary column
 #' Clutch size is a minimum count 
@@ -76,26 +73,27 @@ md.nests1 <- dplyr::inner_join(md.nests,md.nests.test, by = "NestID") %>%
   dplyr::rename("CheckDate" = CheckDate.x)
 glimpse(md.nests1)
 
-# Iterate over the rows and subtract clutchsize days
+#' Iterate over the rows and subtract clutchsize days
 for (i in 1:nrow(md.nests1)) {
   clutchsize <- md.nests1$clutchsize[i]  
   startI <- md.nests1$startI[i]  
   
-  # Create the enddate by subtracting clutchsize (in days) from startI
+  #' Create the enddate by subtracting clutchsize (in days) from startI
   md.nests1$enddate[i] <- startI - clutchsize - days(5)
   
-  # Create the startdate by subtracting 14 days from the enddate
+  #' Create the startdate by subtracting 14 days from the enddate
   md.nests1$startdate[i] <- md.nests1$enddate[i] - days(14)
   
-  # Check the calculated dates
+  #' Check the calculated dates
   print(paste("Row", i, ": Startdate =", md.nests1$startdate[i], ", Enddate =", md.nests1$enddate[i]))
 }
 
-# Convert 'startdate' and 'enddate' columns to Date format
+#' Convert 'startdate' and 'enddate' columns to Date format
 md.nests1$startdate <- as.Date(md.nests1$startdate)
 md.nests1$enddate <- as.Date(md.nests1$enddate)
 glimpse(md.nests1)
 
+#' Filter nesting attempts by study area for loops
 md.nests1.EM <- md.nests1 %>%
   dplyr::filter(studyarea == "EM")
 
@@ -113,7 +111,11 @@ login <- movebank_store_credentials(username = "Kyle.Smelter",
 
 
 ################################################################################
-## Maryland GPS EM
+## Loops to Download Pre-Nesting GPS Data in Maryland
+
+
+############
+## MD East
 
 unique.ID.EM<-unique(md.nests1.EM$NestID)
 
@@ -149,8 +151,8 @@ for(i in 1:nrow(tmp.subset.EM)){
 }
 
 
-################################################################################
-## Maryland GPS WM
+###########
+## MD West
 
 unique.ID.WM<-unique(md.nests1.WM$NestID)
 

@@ -1,15 +1,12 @@
 
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: MovementProcess_Prep.RData (R workspace)
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script downloads movement data associated with each hens nesting attempt from movebank and exports hen movement data as RDS files.
-#' **Last Updated**: 1/25/24
+#' **Purpose**: This script downloads movement data associated with each hens nesting attempt from movebank 
+#' **Last Updated**: 1/25/25
 
 
 ################################################################################
@@ -41,12 +38,6 @@ pa.nests
 ################################################################################
 ## Data Management
 
-#' Change 99s into NA Values
-pa.nests$EggsHatch[pa.nests$EggsHatch == 99] <- NA
-pa.nests$EggsHatch[pa.nests$EggsUnhatch == 99] <- NA
-pa.nests$EggsDestroyed[pa.nests$EggsDestroyed == 99] <- NA
-pa.nests$EggsDepred[pa.nests$EggsDepred == 99] <- NA
-
 #' Create clutch size column and remove unnecessary column
 #' Clutch size is a minimum count 
 pa.nests <- pa.nests %>%
@@ -68,9 +59,9 @@ pa.nests.4D <- dplyr::filter(pa.nests, WMU =="4D")%>%
 nests.inc <- read_csv("Data Management/Csvs/Processed/Incubation Dates/Pennsylvania/20250131_NestAttempts_allbirds_PA.csv")
 nests.inc
 
+#' Sample from known fate model to ensure consistency
 pa.sample <- read_csv("Samples/Pennsylvania/NestingSample_PA.csv")
 pa.sample
-
 nests.inc <- right_join(nests.inc, pa.sample)
 
 #' Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
@@ -79,27 +70,27 @@ pa.nests.4D1 <- dplyr::inner_join(pa.nests.4D, nests.inc, by = "NestID") %>%
   dplyr::rename("CheckDate" = CheckDate.x)
 glimpse(pa.nests.4D1)
 
-# Iterate over the rows and subtract clutchsize days
+#' Iterate over the rows and subtract clutchsize days
 for (i in 1:nrow(pa.nests.4D1)) {
   clutchsize <- pa.nests.4D1$clutchsize[i]  
   startI <- pa.nests.4D1$startI[i]  
   
-  # Create the enddate by subtracting clutchsize (in days) from startI
-  # 5 day buffer
+  #' Create the enddate by subtracting clutchsize (in days) from startI
+  #' 5 day buffer
   pa.nests.4D1$enddate[i] <- startI - clutchsize - days(5)
   
-  # Create the startdate by subtracting 14 days from the enddate
+  #' Create the startdate by subtracting 14 days from the enddate
   pa.nests.4D1$startdate[i] <- pa.nests.4D1$enddate[i]- days(14)
   
-  # Check the calculated dates
+  #' Check the calculated dates
   print(paste("Row", i, ": Startdate =", pa.nests.4D1$startdate[i], ", Enddate =", pa.nests.4D1$enddate[i]))
 }
 
-# Convert 'startdate' and 'enddate' columns to Date format
+#' Convert 'startdate' and 'enddate' columns to Date format
 pa.nests.4D1$startdate <- as.Date(pa.nests.4D1$startdate)
 pa.nests.4D1$enddate <- as.Date(pa.nests.4D1$enddate)
 
-# View the data frame structure
+#' View the data frame structure
 glimpse(pa.nests.4D1)
 
 
@@ -120,26 +111,26 @@ pa.nests.3D1 <- dplyr::inner_join(pa.nests.3D, nests.inc, by = "NestID") %>%
   dplyr::rename("CheckDate" = CheckDate.x)
 glimpse(pa.nests.3D1)
 
-# Iterate over the rows and subtract clutchsize days
+#' Iterate over the rows and subtract clutchsize days
 for (i in 1:nrow(pa.nests.3D1)) {
   clutchsize <- pa.nests.3D1$clutchsize[i]  
   startI <- pa.nests.3D1$startI[i]  
   
-  # Create the enddate by subtracting clutchsize (in days) from startI
+  #' Create the enddate by subtracting clutchsize (in days) from startI
   pa.nests.3D1$enddate[i] <- startI - clutchsize - days(5)
   
-  # Create the startdate by subtracting 14 days from the enddate
+  #' Create the startdate by subtracting 14 days from the enddate
   pa.nests.3D1$startdate[i] <- pa.nests.3D1$enddate[i] - days(14)
   
-  # Check the calculated dates
+  #' Check the calculated dates
   print(paste("Row", i, ": Startdate =", pa.nests.3D1$startdate[i], ", Enddate =", pa.nests.3D1$enddate[i]))
 }
 
-# Convert 'startdate' and 'enddate' columns to Date format
+#' Convert 'startdate' and 'enddate' columns to Date format
 pa.nests.3D1$startdate <- as.Date(pa.nests.3D1$startdate)
 pa.nests.3D1$enddate <- as.Date(pa.nests.3D1$enddate)
 
-# View the data frame structure
+#' View the data frame structure
 glimpse(pa.nests.3D1)
 
 ################################################################################
@@ -159,26 +150,26 @@ pa.nests.2D1 <- dplyr::inner_join(pa.nests.2D, nests.inc, by = "NestID") %>%
   dplyr::rename("CheckDate" = CheckDate.x)
 glimpse(pa.nests.2D1)
 
-# Iterate over the rows and subtract clutchsize days
+#' Iterate over the rows and subtract clutchsize days
 for (i in 1:nrow(pa.nests.2D1)) {
   clutchsize <- pa.nests.2D1$clutchsize[i]  
   startI <- pa.nests.2D1$startI[i]  
   
-  # Create the enddate by subtracting clutchsize (in days) from startI
+  #' Create the enddate by subtracting clutchsize (in days) from startI
   pa.nests.2D1$enddate[i] <- startI - clutchsize - days(5)
   
-  # Create the startdate by subtracting 14 days from the enddate
+  #' Create the startdate by subtracting 14 days from the enddate
   pa.nests.2D1$startdate[i] <- pa.nests.2D1$enddate[i] - days(14)
   
-  # Check the calculated dates
+  #' Check the calculated dates
   print(paste("Row", i, ": Startdate =", pa.nests.2D1$startdate[i], ", Enddate =", pa.nests.2D1$enddate[i]))
 }
 
-# Convert 'startdate' and 'enddate' columns to Date format
+#' Convert 'startdate' and 'enddate' columns to Date format
 pa.nests.2D1$startdate <- as.Date(pa.nests.2D1$startdate)
 pa.nests.2D1$enddate <- as.Date(pa.nests.2D1$enddate)
 
-# View the data frame structure
+#' View the data frame structure
 glimpse(pa.nests.2D1)
 
 
@@ -199,26 +190,26 @@ pa.nests.5C1 <- dplyr::inner_join(pa.nests.5C, nests.inc, by = "NestID") %>%
   dplyr::rename("CheckDate" = CheckDate.x)
 glimpse(pa.nests.5C1)
 
-# Iterate over the rows and subtract clutchsize days
+#' Iterate over the rows and subtract clutchsize days
 for (i in 1:nrow(pa.nests.5C1)) {
   clutchsize <- pa.nests.5C1$clutchsize[i]  
   startI <- pa.nests.5C1$startI[i]  
   
-  # Create the enddate by subtracting clutchsize (in days) from startI
+  #' Create the enddate by subtracting clutchsize (in days) from startI
   pa.nests.5C1$enddate[i] <- startI - clutchsize - days(5)
   
-  # Create the startdate by subtracting 14 days from the enddate
+  #' Create the startdate by subtracting 14 days from the enddate
   pa.nests.5C1$startdate[i] <- pa.nests.5C1$enddate[i] - days(14)
   
-  # Check the calculated dates
+  #' Check the calculated dates
   print(paste("Row", i, ": Startdate =", pa.nests.5C1$startdate[i], ", Enddate =", pa.nests.5C1$enddate[i]))
 }
 
-# Convert 'startdate' and 'enddate' columns to Date format
+#' Convert 'startdate' and 'enddate' columns to Date format
 pa.nests.5C1$startdate <- as.Date(pa.nests.5C1$startdate)
 pa.nests.5C1$enddate <- as.Date(pa.nests.5C1$enddate)
 
-# View the data frame structure
+#' View the data frame structure
 glimpse(pa.nests.5C1)
 
 
@@ -230,8 +221,13 @@ login <- movebank_store_credentials(username = "Kyle.Smelter",
                                     key="Kyle",
                                     force= T)
 
+
 ################################################################################
-## WMU 4D 
+## Loops to Download Pre-Nesting GPS Data in Pennsylvania
+
+
+###########
+## WMU 4D
 
 unique.ID.4d<-unique(pa.nests.4D1$NestID)
 
@@ -267,7 +263,7 @@ for(i in 1:nrow(tmp.subset.4d)){
 }
 
 
-################################################################################
+###########
 ## WMU 3D 
 
 
@@ -305,7 +301,7 @@ for (j in 1:length(unique.ID.3d)){
 }
 
 
-################################################################################
+###########
 ##  WMU 2D 
 
 
@@ -342,7 +338,7 @@ for (j in 1:length(unique.ID.2d)){
 }
 
 
-################################################################################
+###########
 ##  WMU 5C 
 
 
@@ -407,4 +403,4 @@ hens.all <- df.all%>%
   dplyr::select(BirdID, timestamp,long, lat) 
 
 ################################################################################
-################################################################################
+###############################################################################X

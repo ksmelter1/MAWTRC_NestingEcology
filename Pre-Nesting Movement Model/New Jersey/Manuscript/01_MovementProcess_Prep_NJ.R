@@ -1,14 +1,10 @@
-
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: MovementProcess_Prep.RData (R workspace)
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script downloads movement data associated with each hens nesting attempt from movebank and exports hen movement data as RDS files.
+#' **Purpose**: This script downloads movement data associated with each hens nesting attempt from movebank 
 #' **Last Updated**: 2/25/25
 
 
@@ -38,17 +34,20 @@ lapply(packages, load_packages)
 nj.nests <- read_csv("Data Management/Csvs/Processed/Nests/Nests/New Jersey/20250219_CleanedNests_2022_2023_NJ.csv")
 nj.nests
 
+#' Constrain to nests that were used (Case = 1) and not randomly generated nests available to hens
 nj.nests <- nj.nests %>%
   dplyr::filter(Case == "1")
 nj.nests
 
+#' Read in captures csv
 captures <- read_csv("Data Management/Csvs/Raw/Captures/captures_nj.csv")
 captures
 
 ################################################################################
 ## Data Management
 
-#' Change 99s into NA Values
+#' Change 99s into NA Values (There were 99s in this data unlike PA and MD)
+#' Originally the database was coded to fill NAs with 99s
 nj.nests$EggsHatched[nj.nests$EggsHatched == 99] <- NA
 nj.nests$EggsUnhatched[nj.nests$EggsUnhatched == 99] <- NA
 nj.nests$EggsDestroyed[nj.nests$EggsDestroyed == 99] <- NA
@@ -58,6 +57,7 @@ nj.nests$EggsDestroyed[nj.nests$EggsDestroyed == 99] <- NA
 nj.nests <- nj.nests %>%
   dplyr::mutate(clutchsize = rowSums(select(., EggsHatched, EggsDestroyed, EggsUnhatched), na.rm = TRUE)) 
 glimpse(nj.nests)
+
 
 ################################################################################
 ## Incubation Data NJ
@@ -69,13 +69,14 @@ nests.inc
 #' Read in sample from known fate model
 sample <- read_csv("Samples/New Jersey/NestingSample_NJ.csv")
 sample  
-
 nests.inc <- right_join(nests.inc, sample)
 
+#' Rename columns
 captures <- captures %>%
   dplyr::rename("BandID" = bandid) %>%
   dplyr::mutate("BandID" = as.character(BandID))
 
+#' Join columns together 
 nj.nests.test <- dplyr::inner_join(nests.inc, captures, by = "BandID")
 
 #' Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
@@ -103,17 +104,19 @@ for (i in 1:nrow(nj.nests1)) {
 nj.nests1$startdate <- as.Date(nj.nests1$startdate)
 nj.nests1$enddate <- as.Date(nj.nests1$enddate)
 
+#' Rename columns
 nj.nests1 <- nj.nests1 %>%
   dplyr::rename("BirdID" = BandID.x) %>%
   dplyr::rename("BandID" = BandID.y)
 
+#' Group nests by study area for loops below
 nj.nests1.SJ <- nj.nests1 %>%
   dplyr::filter(studyarea == "SJ") %>%
   dplyr::select(BirdID,BandID, startI, endI, clutchsize, NestID, startdate, enddate)
-
 nj.nests1.NJ <- nj.nests1 %>%
   dplyr::filter(studyarea == "NJ") %>%
   dplyr::select(BirdID, BandID, startI, endI, clutchsize, NestID, startdate, enddate)
+
 
 ################################################################################
 ## Connect to Movebank
@@ -125,7 +128,11 @@ login <- movebank_store_credentials(username = "Kyle.Smelter",
 
 
 ################################################################################
-## New Jersey South
+## Loops to Download Pre-Nesting GPS Data in Maryland
+
+
+#############
+## NJ South
 
 unique.ID.SJ<-unique(nj.nests1.SJ$NestID)
 
@@ -161,8 +168,8 @@ for(i in 1:nrow(tmp.subset.SJ)){
 }
 
 
-################################################################################
-## New Jersey North 
+############
+## NJ North
 
 unique.ID.NJ<-unique(nj.nests1.NJ$NestID)
 
@@ -223,4 +230,4 @@ hens.all <- df.all%>%
   dplyr::select(BirdID, timestamp,long, lat) 
 
 ################################################################################
-################################################################################
+###############################################################################X
