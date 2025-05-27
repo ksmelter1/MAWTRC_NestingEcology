@@ -1,6 +1,6 @@
 #'---
 #' title: Nest Success Modeling of Wild Turkeys in the Mid-Atlantic Region
-#' authors: "K. Smelter, F. Buderman"
+#' authors: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
 #' output:
 #'   html_document: 
@@ -20,6 +20,7 @@ library(sf)
 library(stringr)
 library(daymetr)
 library(FedData)
+library(GGally)
 
 ################################################################################
 ## Data Prep- Nest-Level Covs
@@ -297,18 +298,34 @@ hens.behav.out <- readRDS("Data Management/Csvs/Processed/Covariates/Pennsylvani
 
 #' Drop geometry
 #' Keep all observations of hens.behav.out that exist in nests.scaled 
+nests.scaled <- nests.scaled %>%
+  st_drop_geometry() %>%
+  right_join(hens.behav.out, nests.scaled, by = "NestID")
+
+
+#' Calculate mean and standard deviation by age class
+nests.scaled %>%
+  group_by(age) %>%
+  summarise(
+    mean_constancy = mean(IncubationConstancy, na.rm = TRUE),
+    sd_constancy = sd(IncubationConstancy, na.rm = TRUE)
+  )
+
+#' Total number of nests by age class
+nests.scaled %>%
+  group_by(age) %>%
+  summarise(count = n())
+
 #' Scale incubation constancy and change it back to numeric
 #' Scale cumulative step length and change it back to numeric 
 #' Remove all observations where the total locations of gps locations within a buffer is NA
 nests.scaled <- nests.scaled %>%
-  st_drop_geometry() %>%
-  right_join(hens.behav.out, nests.scaled, by = "NestID") %>%
   dplyr::mutate(IncubationConstancy = scale(IncubationConstancy)) %>%
   dplyr::mutate(IncubationConstancy = as.numeric(IncubationConstancy)) %>%
   dplyr::mutate(sum_sl = scale(sum_sl)) %>%
   dplyr::mutate(sum_sl = as.numeric(sum_sl)) %>%
   dplyr::filter(TotalLocations != "NA") %>%
-  dplyr::filter(NestID != "4255_2022_1")
+  dplyr::filter(NestID != "4255_2022_1") 
 
 
 ################################################################################

@@ -165,8 +165,24 @@ hens.behav.out <- readRDS("Data Management/Csvs/Processed/Covariates/Maryland/Be
 hens.behav.out
 
 #' Only keep observations of nests.scaled that exist in nests.sample
+nests.scaled.ready <- right_join(hens.behav.out, nests.scaled) 
+  
+
+#' Calculate mean and standard deviation by age class
+nests.scaled.ready %>%
+  group_by(age) %>%
+  summarise(
+    mean_constancy = mean(IncubationConstancy, na.rm = TRUE),
+    sd_constancy = sd(IncubationConstancy, na.rm = TRUE)
+  )
+
+#' Total number of nests by age class
+nests.scaled.ready %>%
+  group_by(age) %>%
+  summarise(count = n())
+
 #' Scale incubation constancy and Sum of step lengths
-nests.scaled.ready <- right_join(hens.behav.out, nests.scaled) %>%
+nests.scaled.ready <- nests.scaled.ready %>%
   dplyr::mutate(IncubationConstancy = scale(IncubationConstancy)) %>%
   dplyr::mutate(IncubationConstancy = as.numeric(IncubationConstancy)) %>%
   dplyr::mutate(sum_sl = scale(sum_sl)) %>%
@@ -178,7 +194,7 @@ nrow(nests.scaled.ready)
 #' Our sample for the rest of our models
 md.sample <- nests.scaled.ready %>%
   dplyr::select(NestID, BandID, NestYr)
-#write_csv(md.sample,"Samples/Maryland/NestingSample_MD.csv")
+write_csv(md.sample,"Samples/Maryland/NestingSample_MD.csv")
 
 
 ################################################################################

@@ -244,12 +244,30 @@ hens.behav.out
 mean(hens.behav.out$IncubationConstancy)
 
 #' Only keep observations of nests.scaled that exist in nests.sample
-nests.scaled.ready <- right_join(hens.behav.out, nests.scaled) %>%
+nests.scaled.ready <- right_join(hens.behav.out, nests.scaled) 
+
+#' Calculate mean and standard deviation by age class
+nests.scaled.ready %>%
+  group_by(age) %>%
+  summarise(
+    mean_constancy = mean(IncubationConstancy, na.rm = TRUE),
+    sd_constancy = sd(IncubationConstancy, na.rm = TRUE)
+  )
+
+#' Total number of nests by age class
+nests.scaled.ready %>%
+  group_by(age) %>%
+  summarise(count = n())
+
+#' Scale incubation constancy and Sum of step lengths
+nests.scaled.ready <- nests.scaled.ready %>%
   dplyr::mutate(IncubationConstancy = scale(IncubationConstancy)) %>%
   dplyr::mutate(IncubationConstancy = as.numeric(IncubationConstancy)) %>%
   dplyr::mutate(sum_sl = scale(sum_sl)) %>%
   dplyr::mutate(sum_sl = as.numeric(sum_sl)) %>%
   dplyr::filter(TotalLocations != "NA") 
+mapview(nests.scaled.ready)
+nrow(nests.scaled.ready)
 
 nj.sample <- nests.scaled.ready %>%
   dplyr::select(NestID, BandID, NestYr)

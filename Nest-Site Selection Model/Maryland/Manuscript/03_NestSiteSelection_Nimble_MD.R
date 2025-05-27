@@ -154,7 +154,7 @@ X <- cbind(
   nest.data.ready$Evergreen,       # Evergreen Forest
   nest.data.ready$Developed,       # Developed
   nest.data.ready$Pasture,         # Pasture
-  nest.data.ready$Crop,
+  nest.data.ready$Crop,            # Crop
   nest.data.ready$Grassland,       # Grassland/Shrub
   nest.data.ready$Wetland          # Wetland
 )
