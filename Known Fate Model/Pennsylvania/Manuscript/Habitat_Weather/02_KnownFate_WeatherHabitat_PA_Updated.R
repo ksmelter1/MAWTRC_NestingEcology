@@ -460,7 +460,7 @@ p1.betas
 
 
 ################################################################################
-## Journal Plot
+## Beta Plot--- Journal 
 
 # Beta estimates and associated 90% credible intervals 
 p1.betas <- ggplot(mean_estimates, 
