@@ -5,7 +5,7 @@
 #---
 #  
 # **Purpose**: This script analyzes MD East Study Area
-# **Last Updated**: 6/12/2025
+# **Last Updated**: 6/23/2025
 # 
 # 
 ################################################################################
@@ -72,9 +72,9 @@ glimpse(md.nests)
 ## Incubation Data Maryland
 
 # Csv from incubation start and end script
-nests.inc <- read_csv("Data Management/Csvs/Processed/Incubation Dates/Maryland/20250131_NestAttempts_allbirds_MD.csv")
+nests.inc <- read_csv("Data Management/Csvs/Processed/Incubation Dates/Maryland/20250717_NestAttempts_allbirds_MD_Ready.csv")
 
-sample <- read_csv("Samples/Maryland/NestingSample_MD.csv")
+sample <- read_csv("Samples/Maryland/NestingSample_MD.updated.csv")
 nests.inc <- right_join(nests.inc, sample)
 
 md.nests.test <- dplyr::inner_join(nests.inc, captures, by = "bandid") 
@@ -82,8 +82,7 @@ md.nests.test <- dplyr::inner_join(nests.inc, captures, by = "bandid")
 # Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
 md.nests1 <- dplyr::inner_join(md.nests,md.nests.test, by = "NestID") %>%
   dplyr::select(-CheckDate.y, -...1) %>%
-  dplyr::rename("CheckDate" = CheckDate.x) %>%
-  dplyr::filter()
+  dplyr::rename("CheckDate" = CheckDate.x)
 glimpse(md.nests1)
 
 # Iterate over the rows and subtract clutchsize days
@@ -109,7 +108,7 @@ glimpse(md.nests1)
 # Filter nesting attempts by study area for loops
 md.nests1.EM <- md.nests1 %>%
   dplyr::filter(studyarea == "EM") %>%
-  dplyr::filter(NestID != "1079_2023_1")
+  dplyr::filter(NestID != "1214_2024_2") 
 
 
 ################################################################################
@@ -193,14 +192,14 @@ hens_EM <- process_gps_data(full_all_EM)
 ## Creating Tracks for Pre-Nesting Movement Model
 
 # Load NLCD Raster
-md.nlcd <- terra::rast("Data Management/Rasters/NLCD/Maryland/md.nlcd.tif")
+md.nlcd <- terra::rast("Data Management/Rasters/NLCD/Atlantic/atlantic.nlcd.tif")
 plot(md.nlcd)
 
 # Distance to primary roads raster
-primary <- terra::rast("Data Management/Rasters/Roads/Maryland/MDRoadRast.Prim.tiff")
+primary <- terra::rast("Data Management/Rasters/Roads/Atlantic/atlantic.prim.tiff")
 
 # Distance to secondary roads Raster
-secondary <- terra::rast("Data Management/Rasters/Roads/Maryland/MDRoadRast.Sec.tiff")
+secondary <- terra::rast("Data Management/Rasters/Roads/Atlantic/atlantic.sec.tiff")
 
 ################################################################################
 ## Create and Save Tracks 
@@ -380,29 +379,10 @@ prepare_step_selection_data <- function(data) {
 dat_2.ready <- prepare_step_selection_data(final_filtered_random_steps)
 summary(dat_2.ready)
 
-# Function to fill NA values with 0 throughout dataframe
-fill_NA_with_value <- function(df, value = 0) {
-  # Ensure that all columns are of numeric type to handle the replacement
-  df[] <- lapply(df, function(col) {
-    if (is.numeric(col)) {
-      # Replace NA values with the specified value
-      replace(col, is.na(col), value)
-    } else {
-      # Return the column unchanged if it's not numeric
-      col
-    }
-  })
-  return(df)
-}
-
-# Apply the function to fill NA values with 0 (Mean for scaled continous variables and wasn't used for categorical)
-dat_2.ready <- fill_NA_with_value(dat_2.ready)
-
 # Check
 which(dat_2.ready$step_id_==3)
 table(dat_2.ready$case_)
 class(dat_2.ready)
-summary(dat_2.ready)
 
 # Model parameters
 X <- cbind(
@@ -476,22 +456,22 @@ nimbleMCMC_samples <- nimbleMCMC(
   constants = Consts, 
   inits = Inits,
   data = Data,
-  nburnin = 40000, 
-  niter = 60000,
-  thin = 2
+  nburnin = 4000, 
+  niter = 20000,
+  thin = 3
 )
 
 end <- Sys.time()
 
 # Print the means and standard deviations of the posterior samples for the beta coefficients
-colMeans(nimbleMCMC_samples[, 19132:19141])
-colSds(nimbleMCMC_samples[, 19132:19141])
+colMeans(nimbleMCMC_samples[, 18475:18482])
+colSds(nimbleMCMC_samples[, 18475:18482])
 
 # View traceplots
-MCMCtrace(nimbleMCMC_samples[, 19132:19141], pdf = F)
+MCMCtrace(nimbleMCMC_samples[, 18475:18482], pdf = F)
 
 # Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
-beta_samples <- nimbleMCMC_samples[, 19132:19141]
+beta_samples <- nimbleMCMC_samples[, 18475:18482]
 
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
@@ -501,8 +481,6 @@ samples_df <- as.data.frame(samples_matrix)
 
 # Create a vector of new names
 new_names <- c("Intercept", 
-               "Distance to Primary Road",
-               "Distance to Secondary Road", 
                "Mixed Forest",
                "Evergreen Forest",
                "Developed",
@@ -517,6 +495,23 @@ colnames(samples_df) <- new_names
 # View the renamed data frame
 head(samples_df)
 
+
+################################################################################
+## Output Trace Plots
+
+# Force conversion to plain matrix
+samples_matrix <- as.matrix(nimbleMCMC_samples[, 18475:18482])
+
+# Convert to coda mcmc object
+mcmc_samples <- mcmc(samples_matrix)
+
+# Assign new names
+colnames(mcmc_samples) <- new_names
+
+# Generate trace plots
+MCMCtrace(mcmc_samples,
+          iter = 20000,
+          pdf = T)
 
 ################################################################################
 ## Visualize Pre-Nesting Outputs
@@ -597,7 +592,7 @@ mean_estimates1
 
 save(mean_estimates1,
      samples_df,
-     file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Pre-Nesting Movement/Study Area Analysis/pre.MDE.RData")
+     file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Pre-Nesting Movement/Study Area Analysis/pre.MDE.updated.RData")
 
 ################################################################################
 ###############################################################################X
@@ -612,28 +607,24 @@ save(mean_estimates1,
 ################################################################################
 ## Organize Maryland East Nesting Data
 
-md.nlcd <- terra::rast("Data Management/Rasters/NLCD/Maryland/md.nlcd.tif")
+md.nlcd <- terra::rast("Data Management/Rasters/NLCD/Atlantic/atlantic.nlcd.tif")
+plot(md.nlcd)
 
 # Read in nests csv
 md.nests <- read_csv("Data Management/Csvs/Processed/Nests/Nests/Maryland/20250219_CleanedNests_2022_2023_MD.csv")
 md.nests
 
-# Constrain to nests that were used (Case = 1) and not randomly generated nests available to hens
-md.nests <- md.nests %>%
-  dplyr::filter(Case == "1")
-md.nests
-
 # Read in captures
 captures <- read_csv("Data Management/Csvs/Raw/Captures/captures_md.csv")
 captures
-  
-# Csv from incubation start and end script
-nests.inc <- read_csv("Data Management/Csvs/Processed/Incubation Dates/Maryland/20250131_NestAttempts_allbirds_MD.csv")
 
-sample <- read_csv("Samples/Maryland/NestingSample_MD.csv")
+# Csv from incubation start and end script
+nests.inc <- read_csv("Data Management/Csvs/Processed/Incubation Dates/Maryland/20250717_NestAttempts_allbirds_MD_Ready.csv")
+
+sample <- read_csv("Samples/Maryland/NestingSample_MD.updated.csv")
 nests.inc <- right_join(nests.inc, sample)
 
-md.nests.test <- dplyr::inner_join(nests.inc, captures, by = "bandid")
+md.nests.test <- dplyr::inner_join(nests.inc, captures, by = "bandid") 
 
 # Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
 md.nests1 <- dplyr::inner_join(md.nests,md.nests.test, by = "NestID") %>%
@@ -642,49 +633,17 @@ md.nests1 <- dplyr::inner_join(md.nests,md.nests.test, by = "NestID") %>%
   dplyr::filter(studyarea == "EM")
 glimpse(md.nests1)
 
+# Create an sf object
 md.nests.sf <- md.nests1 %>%
   st_as_sf(., coords = c("Long", "Lat"), crs = 4326) %>%
   st_transform(5070)
 mapview(md.nests.sf)
 
-# Function to generate 4 offset points (N, S, E, W) 100m from the original nest
-generate_cardinal_points <- function(nest_point, nest_id) {
-  coords <- st_coordinates(nest_point)
-  
-  directions <- tibble(
-    dx = c(0, 0, 100, -100),  # East/West
-    dy = c(100, -100, 0, 0),  # North/South
-    direction = c("N", "S", "E", "W")
-  )
-  
-  offsets <- directions %>%
-    mutate(
-      x = coords[1] + dx,
-      y = coords[2] + dy,
-      NestID = nest_id,
-      Case = 0
-    ) %>%
-    st_as_sf(coords = c("x", "y"), crs = 5070)
-  
-  return(offsets)
-}
-
-# Apply to all nests
-available.sf <- map2_dfr(md.nests.sf$geometry, md.nests.sf$NestID, generate_cardinal_points)
-
-used.nests.sf <- md.nests.sf %>%
-  mutate(Case = 1) %>%
-  dplyr::select(NestID, Case)
-
-# Combine used and simulated
-all.nests.sf <- bind_rows(used.nests.sf, available.sf) %>%
-  dplyr::select(NestID, Case, geometry)
-
 # Extract point value at each nest
-landcov <-terra::extract(md.nlcd, all.nests.sf)
+landcov <-terra::extract(md.nlcd, md.nests.sf)
 
 # Bind columns together
-md.nests.landcov <- cbind(all.nests.sf, landcov) %>%
+md.nests.landcov <- cbind(md.nests.sf, landcov) %>%
   dplyr::rename("landuse" = Class)
 
 
@@ -692,9 +651,9 @@ md.nests.landcov <- cbind(all.nests.sf, landcov) %>%
 ## Extract Distances to Roads- Maryland
 
 # Distance to primary roads raster
-primary <- terra::rast("Data Management/Rasters/Roads/Maryland/MDRoadRast.Prim.tiff")
+primary <- terra::rast("Data Management/Rasters/Roads/Atlantic/atlantic.prim.tiff")
 # Distance to secondary roads Raster
-secondary <- terra::rast("Data Management/Rasters/Roads/Maryland/MDRoadRast.Sec.tiff")
+secondary <- terra::rast("Data Management/Rasters/Roads/Atlantic/atlantic.sec.tiff")
 
 # Read in nest data with landcover
 md.nests.landcov.sf <- md.nests.landcov
@@ -723,28 +682,20 @@ md.nests.covs$Evergreen <- ifelse(md.nests.covs$landuse == "Evergreen Forest", 1
 md.nests.covs$Mixed <- ifelse(md.nests.covs$landuse == "Mixed Forest", 1, 0)
 md.nests.covs$Grassland <- ifelse(md.nests.covs$landuse == "Grassland/Shrub", 1, 0)
 md.nests.covs$Wetland <- ifelse(md.nests.covs$landuse == "Wetland", 1, 0)
-md.nests.covs$Water <- ifelse(md.nests.covs$landuse == "Open Water", 1, 0)
-
 
 ################################################################################
 ## Fit Nest-Site Selection Model
 
 # This sample matches the Pre-Nesting and known fate model
-Sample_MD <- read_csv("Samples/Maryland/NestingSample_MD.csv")
+Sample_MD <- read_csv("Samples/Maryland/NestingSample_MD.updated.csv")
 Sample_MD
 
 # Drop geometry column and create unique identifier for NestID
 md.nests.covs <- sf::st_drop_geometry(md.nests.covs)
-md.nests.covs$NestID1 <- paste(md.nests.covs$NestID, md.nests.covs$PlotType, sep = "_")
-
-# Read in basal area data
-#basal_summary <- read_csv("Data Management/Csvs/Processed/Covariates/Pennsylvania/BasalArea.csv")
 
 # Keep only samples that exist in Sample_PA in md.nests.covs
 md.nests.covs.1 <- right_join(md.nests.covs, Sample_MD)
-
-md.nests.covs.1 <- md.nests.covs.1[-c(296:338), ]
-
+md.nests.covs.1 <- md.nests.covs.1[-c(281:321), ]
 
 # Rename object
 nest.data <- md.nests.covs.1 
@@ -753,12 +704,17 @@ summary(nest.data)
 
 # Subset dataframe and rename columns 
 nest.data <- nest.data %>%
-  dplyr::select(NestID, BandID,
+  dplyr::mutate(BandID = str_extract(NestID, "^\\d{4}")) %>%
+  dplyr::select(NestID, BandID, landuse,
                 Case, Developed, Deciduous, Mixed, Evergreen, Pasture, Crop,
-                primary, secondary,  Water, Grassland, Wetland) %>%
+                primary, secondary, Grassland, Wetland) %>%
   dplyr::rename("Primary" = primary) %>%
-  dplyr::rename("Secondary" = secondary)
+  dplyr::rename("Secondary" = secondary) %>%
+  dplyr::filter(NestID != "1079_2023_1") %>%
+  dplyr::filter(landuse != "Deciduous Forest")
 nest.data
+
+table(nest.data$landuse)
 
 # Switch coding to UTF-8
 nest.data <- nest.data %>% 
@@ -787,8 +743,7 @@ nest.data <- nest.data %>%
   dplyr::mutate(Mixed = as.numeric(Mixed)) %>%
   dplyr::mutate(Evergreen = as.numeric(Evergreen)) %>%
   dplyr::mutate(Grassland = as.numeric(Grassland)) %>%
-  dplyr::mutate(Wetland = as.numeric(Wetland)) %>%
-  dplyr::mutate(Water = as.numeric(Water)) 
+  dplyr::mutate(Wetland = as.numeric(Wetland)) 
 glimpse(nest.data)
 str(nest.data)
 summary(nest.data)
@@ -819,16 +774,7 @@ str(nest.data)
 glimpse(nest.data)
 summary(nest.data)
 
-
-# Function to replace all NAs with 0 in a dataframe
-# Since we scaled the data, the mean is zero
-fill_na_with_zero <- function(df) {
-  df[is.na(df)] <- 0
-  return(df)
-}
-
-# Apply the function
-nest.data.ready <- fill_na_with_zero(nest.data)
+nest.data.ready <- nest.data
 
 # Check
 summary(nest.data.ready)
@@ -863,6 +809,8 @@ nestmodel<-nimbleCode({
 )
 
 # Model parameters
+# Wetland is set as the reference level
+# Pasture will not be included in the model since it is all zeros
 X<- cbind(
   rep(1, nrow(nest.data.ready)),   # Intercept (1)
   nest.data.ready$Primary,         # Distance to Primary Road
@@ -870,10 +818,8 @@ X<- cbind(
   nest.data.ready$Mixed,           # Mixed Forest
   nest.data.ready$Evergreen,       # Evergreen Forest
   nest.data.ready$Developed,       # Developed
-  nest.data.ready$Pasture,         # Pasture
   nest.data.ready$Crop,            # Crop
-  nest.data.ready$Grassland,       # Grassland
-  nest.data.ready$Wetland          #Wetland
+  nest.data.ready$Grassland        # Grassland
 )
 
 ggpairs(
@@ -898,17 +844,17 @@ nimbleMCMC_samples <- nimbleMCMC(code = nestmodel,
                                  inits= Inits,
                                  data = Data,
                                  nburnin = 10000,
-                                 niter = 20000,
+                                 niter = 30000,
                                  thin = 3,
                                  nchains = 1)
 
 # View traceplots
 MCMCtrace(nimbleMCMC_samples, pdf = F)
-colMeans(nimbleMCMC_samples[,60:69])
-colSds(nimbleMCMC_samples[,60:69])
+colMeans(nimbleMCMC_samples[,57:64])
+colSds(nimbleMCMC_samples[,57:64])
 
 # Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
-beta_samples <- nimbleMCMC_samples[, 60:69]
+beta_samples <- nimbleMCMC_samples[, 57:64]
 
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
@@ -923,10 +869,8 @@ new_names <- c("Intercept",
                "Mixed Forest",
                "Evergreen Forest", 
                "Developed",
-               "Pasture", 
                "Crop",
-               "Grassland/Shrub",
-               "Wetland")
+               "Grassland/Shrub")
 
 # Assign the variable names to the columns of the beta_samples
 colnames(samples_df) <- new_names
@@ -934,6 +878,22 @@ colnames(samples_df) <- new_names
 # View the renamed data frame
 head(samples_df)
 
+################################################################################
+## Output Trace Plots
+
+# Force conversion to plain matrix
+samples_matrix <- as.matrix(nimbleMCMC_samples[, 57:64])
+
+# Convert to coda mcmc object
+mcmc_samples <- mcmc(samples_matrix)
+
+# Assign new names
+colnames(mcmc_samples) <- new_names
+
+# Generate trace plots
+MCMCtrace(mcmc_samples,
+          iter = 30000,
+          pdf = T)
 
 ################################################################################
 ## Visualize Nest-Site Selection Results for Pennsylvania WMU 4D
@@ -1026,7 +986,7 @@ mean_estimates2
 
 save(mean_estimates2,
      samples_df,
-     file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Pre-Nesting Movement/Study Area Analysis/NSS.MDE.RData")
+     file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Pre-Nesting Movement/Study Area Analysis/NSS.MDE.updated.RData")
 
 ################################################################################
 ###############################################################################X
@@ -1040,7 +1000,7 @@ save(mean_estimates2,
 ################################################################################
 ## Data Prep- Nest-Level Covs
 
-md.nlcd <- terra::rast("Data Management/Rasters/NLCD/Maryland/md.nlcd.tif")
+md.nlcd <- terra::rast("Data Management/Rasters/NLCD/Atlantic/atlantic.nlcd.tif")
 
 # Read in nests csv
 md.nests <- read_csv("Data Management/Csvs/Processed/Nests/Nests/Maryland/20250219_CleanedNests_2022_2023_MD.csv")
@@ -1056,9 +1016,9 @@ captures <- read_csv("Data Management/Csvs/Raw/Captures/captures_md.csv")
 captures
 
 # Csv from incubation start and end script
-nests.inc <- read_csv("Data Management/Csvs/Processed/Incubation Dates/Maryland/20250131_NestAttempts_allbirds_MD.csv")
+nests.inc <- read_csv("Data Management/Csvs/Processed/Incubation Dates/Maryland/20250717_NestAttempts_allbirds_MD_Ready.csv")
 
-sample <- read_csv("Samples/Maryland/NestingSample_MD.csv")
+sample <- read_csv("Samples/Maryland/NestingSample_MD.updated.csv")
 nests.inc <- right_join(nests.inc, sample)
 
 md.nests.test <- dplyr::inner_join(nests.inc, captures, by = "bandid")
@@ -1086,11 +1046,10 @@ md.nests.landcov <- cbind(md.nests.sf, landcov) %>%
 ################################################################################
 ## Extract Distances to Roads- Pennsylvania
 
-
 # Distance to primary roads raster
-primary <- terra::rast("Data Management/Rasters/Roads/Maryland/MDRoadRast.Prim.tiff")
+primary <- terra::rast("Data Management/Rasters/Roads/Atlantic/atlantic.prim.tiff")
 # Distance to secondary roads Raster
-secondary <- terra::rast("Data Management/Rasters/Roads/Maryland/MDRoadRast.Sec.tiff")
+secondary <- terra::rast("Data Management/Rasters/Roads/Atlantic/atlantic.sec.tiff")
 
 # Read in nest data with landcover
 md.nests.landcov.sf <- md.nests.landcov
@@ -1135,9 +1094,6 @@ md.nests.covs$Evergreen <- ifelse(md.nests.covs$landuse == "Evergreen Forest", 1
 md.nests.covs$Mixed <- ifelse(md.nests.covs$landuse == "Mixed Forest", 1, 0)
 md.nests.covs$Grassland <- ifelse(md.nests.covs$landuse == "Grassland/Shrub", 1, 0)
 md.nests.covs$Wetland <- ifelse(md.nests.covs$landuse == "Wetland", 1, 0)
-md.nests.covs$Water <- ifelse(md.nests.covs$landuse == "Open Water", 1, 0)
-
-
 
 # Switch coding to UTF-8
 nests <- md.nests.covs %>% 
@@ -1213,7 +1169,7 @@ nests.scaled$`Nest Incubation Date` <- as.numeric(nests.scaled$`Nest Incubation 
 ## Data Prep- Behavior Covariates
 
 # Read in RDS file from the behavior script
-hens.behav.out <- readRDS("Data Management/Csvs/Processed/Covariates/Maryland/Behavior/hen.behav.covs.MD.RDS")
+hens.behav.out <- readRDS("Data Management/Csvs/Processed/Covariates/Maryland/Behavior/hen.behav.covs.MD.updated.RDS")
 
 # Drop geometry
 # Keep all observations of hens.behav.out that exist in nests.scaled 
@@ -1273,7 +1229,7 @@ n.weather.cov<-2
 weather.array <- array(NA, dim = c(nrow(nests.scaled),nrow(w[[1]]$data),n.weather.cov))
 
 
-for (i in 1:58) {
+for (i in 1:56) {
   weather.array[i, 1:365, 1] <- w[[i]]$data$tmin..deg.c.
   weather.array[i, 1:365, 2] <- w[[i]]$data$prcp..mm.day.
 }
@@ -1346,14 +1302,14 @@ for(i in 1:length(birds2024)) {
   weather.array.copy[birds2024[i], (julians + 365), 2] <- precips
 }
 
-weather.array.copy[20,62:730,1]
+weather.array.copy[5,62:730,1]
 
 #Clean up temporary variables
 #rm(precips)
 #rm(tmins)
 
 # Check the first few rows of the 2024 data (should be stored in 366-730)
-print(weather.array.copy[4,,2])  # Tmin for both 2023 and 20245print(weather.array[102,,2])  # Precipitation for both 2023 and 2024
+print(weather.array.copy[5,,2])  # Tmin for both 2023 and 20245print(weather.array[102,,2])  # Precipitation for both 2023 and 2024
 
 ################################################################################
 ## Fit Weather and Habitat Known Fate Model
@@ -1419,32 +1375,6 @@ k <- apply(surv.caps[,1:83],1,getLast)
 f;k
 f<k
 
-# Store weather data within arrays for 2022 and 2023
-# Rows = 158 (# of nests)
-# Columns = 365 (# of days within a year)
-# Dimensions = 1, or 2 (Temp = 1, Precip = 2)
-temperatureC2023 <- weather.array.copy[1:58,105:187,1]
-temperatureC2024 <- weather.array.copy[1:58,(105+366):(187+366),1]
-precip2023 <- weather.array.copy[1:58,105:187,2]
-precip2024 <- weather.array.copy[1:58,(105+366):(187+366),2]
-
-testTempC = data.frame(matrix(NA, nrow = 58, ncol = 83))   
-testPrecip = data.frame(matrix(NA, nrow = 58, ncol = 83))
-for(i in 1:nrow(surv.caps)){
-  if(surv.caps$Year[i] == 1){
-    testTempC[i,f[i]:k[i]] <- temperatureC2023[i,f[i]:k[i]]
-    testPrecip[i,f[i]:k[i]] <- precip2023[i,f[i]:k[i]]
-  }
-  else if(surv.caps$Year[i] == 2){
-    testTempC[i,f[i]:k[i]] <- temperatureC2024[i,f[i]:k[i]]
-    testPrecip[i,f[i]:k[i]] <- precip2024[i,f[i]:k[i]]
-  }
-  else{
-    testTempC[i,] <- "You messed up" 
-    testPrecip[i,] <- "You messed up"
-  }
-}
-
 ################################################################################
 ## Get 3 day moving average
 
@@ -1452,13 +1382,13 @@ for(i in 1:nrow(surv.caps)){
 # For each row in surv.caps if the year is the first year of the study, collect the rolling mean for 2022 variables
 # For each row in surv.caps if the year is the second year of the study, collect the rolling mean for 2023 variables
 # Getting 3 day rolling mean
-temperatureC2023 <- weather.array.copy[1:58,1:365,1]
-temperatureC2024 <- weather.array.copy[1:58,366:730,1]
-precip2023 <- weather.array.copy[1:58,1:365,2]
-precip2024 <- weather.array.copy[1:58,366:730,2]
+temperatureC2023 <- weather.array.copy[1:56,1:365,1]
+temperatureC2024 <- weather.array.copy[1:56,366:730,1]
+precip2023 <- weather.array.copy[1:56,1:365,2]
+precip2024 <- weather.array.copy[1:56,366:730,2]
 
-testTempC3Roll = data.frame(matrix(NA, nrow = 58, ncol = 83))   
-testPrecip3Roll = data.frame(matrix(NA, nrow = 58, ncol = 83))
+testTempC3Roll = data.frame(matrix(NA, nrow = 56, ncol = 83))   
+testPrecip3Roll = data.frame(matrix(NA, nrow = 56, ncol = 83))
 for(i in 1:nrow(surv.caps)){
   if(surv.caps$Year[i] == 1){
     for(j in (f[i]+104):(k[i]+104)){
@@ -1513,25 +1443,6 @@ cor_result
 
 
 ################################################################################
-## Compile Parameters into matrix format
-
-# Function to fill NA values with 0 throughout dataframe
-# These parameters are scaled so we are replacing NA values with the mean
-fill_NA_with_value <- function(df, value = 0) {
-  df[] <- lapply(df, function(col) {
-    if (is.numeric(col)) {
-      replace(col, is.na(col), value)
-    } else {
-      col
-    }
-  })
-  return(df)
-}
-nests.ready <- fill_NA_with_value(nests.scaled)
-summary(nests.ready)
-
-
-################################################################################
 ## Nimble Known Fate Model
 
 # Estimates daily nest survival probability as a function of relevant variables
@@ -1574,6 +1485,8 @@ knownfate.habitat <- nimbleCode({
 
 # Model parameters
 # No Nests located in pasture cover type in Maryland East
+nests.ready <- nests.scaled
+
 X <- cbind(
   rep(1, nrow(nests.ready)),                                # Intercept (1)
   as.numeric(nests.ready$primary),                          # Distance to Primary Road
@@ -1583,7 +1496,6 @@ X <- cbind(
   as.numeric(nests.ready$Developed),                        # Developed
   as.numeric(nests.ready$Crop),                             # Crop
   as.numeric(nests.ready$Grassland),                        # Grassland
-  as.numeric(nests.ready$Wetland),                          # Wetland
   as.numeric(nests.ready$`Nest Incubation Date`),           # Nest Incubation Date
   as.numeric(nests.ready$IncubationConstancy),              # Incubation Constancy
   as.numeric(nests.ready$age)                               # Age Class
@@ -1635,12 +1547,12 @@ nimbleMCMC_samples <- nimbleMCMC(
 end <- Sys.time()
 
 summary(nimbleMCMC_samples)
-colMeans(nimbleMCMC_samples[,1:15])
-colSds(nimbleMCMC_samples[,1:15])
-MCMCtrace(nimbleMCMC_samples, pdf = FALSE)
+colMeans(nimbleMCMC_samples[,1:14])
+colSds(nimbleMCMC_samples[,1:14])
+MCMCtrace(nimbleMCMC_samples[,1:14], pdf = FALSE)
 
 # Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
-beta_samples <- nimbleMCMC_samples[, 1:15]
+beta_samples <- nimbleMCMC_samples[, 1:14]
 
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
@@ -1657,7 +1569,6 @@ new_names <- c("Intercept",
                "Developed",
                "Crop",
                "Grassland/Shrub",
-               "Wetland",
                "Nest Incubation Date",
                "Incubation Constancy",
                "Age Class",
@@ -1801,7 +1712,7 @@ p1.betas
 
 save(mean_estimates3,
      samples_df,
-     file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Pre-Nesting Movement/Study Area Analysis/kf.MDE.RData")
+     file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Pre-Nesting Movement/Study Area Analysis/kf.MDE.updated.RData")
 
 ################################################################################
 ###############################################################################X
