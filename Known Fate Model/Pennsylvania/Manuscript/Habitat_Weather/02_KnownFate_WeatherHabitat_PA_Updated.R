@@ -8,8 +8,8 @@
 #---
 #  
 # **Purpose**: This script uses derived incubation start and end dates to fit a Bayesian known fate model 
-# **Key Changes**: This script incorporates 2024 data into the Pennsylvania known fate 
-# **Last Updated**: 7/14/25
+# **Key Changes**: This script incorporates 2024 data into the Pennsylvania known fate model as requested by the PGC
+# **Last Updated**: 7/17/25
 
 ################################################################################
 ## Load Packages
@@ -24,11 +24,45 @@ library(tidyverse)
 library(tidybayes)
 library(VGAM)
 library(ggpubr)
+library(coda)
 
 # RData file from data prep script
 # Contains data to fit model
 load("Data Management/RData/Known Fate/Pennsylvania/Manuscript/01_Covs_Ready.updated.RData")
 
+
+################################################################################
+## Sample size metrics for manuscript
+
+# Remove case columns, all nests were used
+# NAs came from a previous join
+nests.scaled <- nests.scaled.ready %>%
+  dplyr::select(-Case)
+
+# Obtain sample sizes for manuscript
+# Numbers don't exactly add up because a hen could nest as a juvenile one year and adult the next
+# Unique Birds 
+length(unique(nests.scaled$BandID))
+length(unique(nests.scaled$BandID[nests.scaled$age == "0"]))
+length(unique(nests.scaled$BandID[nests.scaled$age == "1"]))
+
+# Nesting Birds
+length(nests.scaled$BandID)
+length(nests.scaled$BandID[nests.scaled$age == "0"])
+length(nests.scaled$BandID[nests.scaled$age == "1"])
+
+# Ensure startI is a Date type
+nests.scaled$startI <- as.Date(nests.scaled$startI)
+# Subset for 2023
+median_2022 <- median(nests.scaled$startI[nests.scaled$NestYr == 2022], na.rm = TRUE)
+# Subset for 2023
+median_2023 <- median(nests.scaled$startI[nests.scaled$NestYr == 2023], na.rm = TRUE)
+# Subset for 2024
+median_2024 <- median(nests.scaled$startI[nests.scaled$NestYr == 2024], na.rm = TRUE)
+# Print results
+median_2022
+median_2023
+median_2024
 
 ################################################################################
 ## Data Prep- Encounter Histories
@@ -93,12 +127,12 @@ f<k
 # Rows = 260 (# of nests)
 # Columns = # of days within 3 years
 # Dimensions = 1, or 2 (Temp = 1, Precip = 2)
-temperatureC2022 <- weather.array.copy[1:260,1:365,1]
-temperatureC2023 <- weather.array.copy[1:260,366:730,1]
-temperatureC2024 <- weather.array.copy[1:260, 731:1095,1]
-precip2022 <- weather.array.copy[1:260,1:365,2]
-precip2023 <- weather.array.copy[1:260,366:730,2]
-precip2024 <- weather.array.copy[1:260, 731:1095,1]
+temperatureC2022 <- weather.array.copy[1:265,1:365,1]
+temperatureC2023 <- weather.array.copy[1:265,366:730,1]
+temperatureC2024 <- weather.array.copy[1:265, 731:1095,1]
+precip2022 <- weather.array.copy[1:265,1:365,2]
+precip2023 <- weather.array.copy[1:265,366:730,2]
+precip2024 <- weather.array.copy[1:265, 731:1095,2]
 
 ################################################################################
 ## Get 3 day moving average
@@ -106,8 +140,8 @@ precip2024 <- weather.array.copy[1:260, 731:1095,1]
 # Convert from matrix to dataframe
 # For each row in surv.caps if the year is the first year of the study, collect the rolling mean for 2022 variables
 # For each row in surv.caps if the year is the second year of the study, collect the rolling mean for 2023 variables
-testTempC3Roll = data.frame(matrix(NA, nrow = 260, ncol = 158))   
-testPrecip3Roll = data.frame(matrix(NA, nrow = 260, ncol = 158))
+testTempC3Roll = data.frame(matrix(NA, nrow = 265, ncol = 158))   
+testPrecip3Roll = data.frame(matrix(NA, nrow = 265, ncol = 158))
 for(i in 1:nrow(surv.caps)){
   if(surv.caps$Year[i] == 1){
     for(j in (f[i]+102):(k[i]+102)){
@@ -168,7 +202,11 @@ cor_result
 ################################################################################
 ## Compile Parameters into matrix format
 
+# Check to see if there are any NAs in the data
+summary(nests.scaled)
+
 # Function to fill NA values with 0 throughout dataframe
+# Only NAs exist within vegetation columns
 # These parameters are scaled so we are replacing NA values with the mean
 fill_NA_with_value <- function(df, value = 0) {
   df[] <- lapply(df, function(col) {
@@ -180,7 +218,7 @@ fill_NA_with_value <- function(df, value = 0) {
   })
   return(df)
 }
-nests.ready <- fill_NA_with_value(nests.scaled.ready)
+nests.ready <- fill_NA_with_value(nests.scaled)
 summary(nests.ready)
 
 
@@ -293,9 +331,9 @@ nimbleMCMC_samples <- nimbleMCMC(
 summary(nimbleMCMC_samples)
 colMeans(nimbleMCMC_samples[,1:22])
 colSds(nimbleMCMC_samples[,1:22])
-MCMCtrace(nimbleMCMC_samples, pdf = FALSE)
+MCMCtrace(nimbleMCMC_samples[,1:22], iter = 20000, pdf = FALSE)
 
-# Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
+# Extract the posterior samples for the 'beta' parameters (columns 1 to 22)
 beta_samples <- nimbleMCMC_samples[, 1:22]
 
 # Convert mcmc.list to matrix
@@ -334,6 +372,22 @@ colnames(samples_df) <- new_names
 # View the renamed data frame
 head(samples_df)
 
+################################################################################
+## Output Trace Plots
+
+# Force conversion to plain matrix
+samples_matrix <- as.matrix(nimbleMCMC_samples[, 1:22])
+
+# Convert to coda mcmc object
+mcmc_samples <- mcmc(samples_matrix)
+
+# Assign new names
+colnames(mcmc_samples) <- new_names
+
+# Generate trace plots
+MCMCtrace(mcmc_samples,
+          iter = 20000,
+          pdf = T)
 
 ################################################################################
 ## Data Prep for Beta Plot
@@ -494,7 +548,7 @@ p1.betas
 ## Output Data
 
 #Save multiple objects in a single RData file
-#save(p1.betas, mean_estimates, samples_df, file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Known Fate/kf.betas.habitat.PA.updated.RData", overwrite = T)
+save(p1.betas, mean_estimates, samples_df, file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Known Fate/kf.betas.habitat.PA.updated.RData", overwrite = T)
 
 
 ################################################################################
@@ -505,11 +559,11 @@ p1.betas
 # Create plots below by updating the x-axis with each predictor
 
 sim_tbl <- expand_grid(-1:1)
-colnames(sim_tbl) <- c("Evergreen Forest") 
+colnames(sim_tbl) <- c("Visual Obstruction") 
 
-sim_tbl$prediction <- pmap(list(sim_tbl$`Evergreen Forest`), function(cov1){
+sim_tbl$prediction <- pmap(list(sim_tbl$`Visual Obstruction`), function(cov1){
                              clogloglink(samples_df$Intercept + 
-                                         samples_df$`Evergreen Forest` * cov1, 
+                                         samples_df$`Visual Obstruction` * cov1, 
                                          inverse = TRUE)
                            })
 sim_tbl_long <- unnest(sim_tbl, prediction) 
