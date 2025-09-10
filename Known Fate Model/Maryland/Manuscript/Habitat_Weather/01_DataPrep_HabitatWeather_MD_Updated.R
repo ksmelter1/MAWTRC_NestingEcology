@@ -1,6 +1,6 @@
 #---
 # title: Nest Success Modeling of Wild Turkeys in the Mid-Atlantic Region
-# authors: "K. Smelter, F. Buderman"
+# authors: "K. Smelter
 # date: "`r format(Sys.time(), '%d %B, %Y')`"
 # output:
 #   html_document: 
@@ -197,10 +197,17 @@ nests.scaled.ready <- nests.scaled.ready %>%
   dplyr::filter(TotalLocations != "NA") %>%
   st_drop_geometry()
 
+# Create Renest variable
+nests.scaled.ready$Renest <- ifelse(
+  substr(nests.scaled.ready$NestID, nchar(nests.scaled.ready$NestID), nchar(nests.scaled.ready$NestID)) != "1",
+  1,
+  0
+)
+
 # Our sample for the rest of our models
 md.sample <- nests.scaled.ready %>%
   dplyr::select(NestID, BandID, NestYr)
-write_csv(md.sample,"Samples/Maryland/NestingSample_MD.updated.csv")
+#write_csv(md.sample,"Samples/Maryland/NestingSample_MD.updated.csv")
 
 
 ################################################################################
@@ -216,23 +223,25 @@ write.csv(nest.sites,"Data Management/Csvs/Processed/Nests/Nests/nest.sites.weat
 
 # Perform Daymet download  
 w <- download_daymet_batch(
-  file_location = 'Data Management/Csvs/Processed/Nests/Nests/nest.sites.weather_MD.csv',
+  file_location = 'Data Management/Csvs/Processed/Nests/Nests/nest.sites.weather_MD.updated.csv',
   start = 2023,
-  end = 2024,
+  end = 2023,
   internal = TRUE)
 
 
-w[[1]]$data[105:195,]
+w[[1]]$data[1:365,]
 
 # Check the total length of the data for nest 102 (Should be 730)
-length(w[[102]]$data$tmin..deg.c)
-length(w[[102]]$data$prcp..mm.day)
+length(w[[97]]$data$tmin..deg.c)
+length(w[[97]]$data$prcp..mm.day)
 
 # Number of weather covariates (minimum temperature and precipitation)
 n.weather.cov <- 2
 
+# Create empty weather array to store weather variables
 weather.array <- array(NA, dim = c(nrow(nests.scaled.ready),nrow(w[[1]]$data),n.weather.cov))
 
+# Fill the array
 for (i in 1:97) {
   weather.array[i, 1:365, 1] <- w[[i]]$data$tmin..deg.c.
   weather.array[i, 1:365, 2] <- w[[i]]$data$prcp..mm.day.

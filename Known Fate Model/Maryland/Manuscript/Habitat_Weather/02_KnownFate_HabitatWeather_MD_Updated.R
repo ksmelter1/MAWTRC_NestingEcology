@@ -1,6 +1,6 @@
 #---
 # title: Daily Nest Survival Modeling of Wild Turkeys in the Mid-Atlantic Region
-# authors: "K. Smelter, F. Buderman"
+# authors: "K. Smelter
 # date: "`r format(Sys.time(), '%d %B, %Y')`"
 # output:
 #   html_document: 
@@ -9,7 +9,7 @@
 #  
 # **Purpose**: This script uses derived incubation start and end dates to fit a Bayesian known fate model 
 # **Key Changes**: This script uses the cloglog link instead of the logit link for modeling daily nest survival
-# **Last Updated**: 2/19/25
+# **Last Updated**: 9/9/25
 
 
 ################################################################################
@@ -23,6 +23,7 @@ library(sf)
 library(matrixStats)
 library(tidybayes)
 library(VGAM)
+library(coda)
 
 load("Data Management/RData/Known Fate/Maryland/Manuscript/Habitat_Weather/01_Covs_Ready_Updated.RData")
 
@@ -410,7 +411,10 @@ mean_estimates <- mean_estimates %>%
                                      )))
 mean_estimates
 mean_estimates <- mean_estimates %>%
-  mutate(Scale = factor(Scale, levels = c("Individual", "Nest", "Landscape", "Climate")))
+  mutate(Scale = factor(Scale, levels = c("Individual", 
+                                          "Nest",
+                                          "Landscape",
+                                          "Climate")))
 
 ################################################################################
 ## Beta Plot 
@@ -476,3 +480,61 @@ pred.p3 <- sim_tbl_long %>%
   )
 pred.p3
 
+################################################################################
+## Visualize the Interaction between Precipitation and Minimum Temperature
+
+library(ggplot2)
+library(tidyverse)
+library(nimble)
+
+# Define standardized temp values
+temp_vals <- seq(-2, 2, length.out = 100)
+
+# Define low, medium, high standardized precipitation levels
+precip_vals <- c(-2, 0, 2)
+
+# Posterior samples
+beta_temp <- samples_df$`Minimum Temperature`
+beta_precip <- samples_df$`Precipitation`
+beta_inter <- samples_df$`Precipitation * Minimum Temperature`
+
+# Container for predictions
+prediction_list <- list()
+
+# Loop over each fixed precip level
+for (p in precip_vals) {
+  for (t in temp_vals) {
+    lp <- beta_temp * t + beta_precip * p + beta_inter * t * p
+    phi <- icloglog(lp)
+    
+    prediction_list[[length(prediction_list) + 1]] <- data.frame(
+      temp = t,
+      precip = p,
+      phi_mean = mean(phi),
+      phi_lower = quantile(phi, 0.05),
+      phi_upper = quantile(phi, 0.95)
+    )
+  }
+}
+
+# Combine predictions and label precip levels
+pred_df <- do.call(rbind, prediction_list)
+pred_df$precip <- factor(pred_df$precip,
+                         levels = c(-2, 0, 2),
+                         labels = c("Low Precip", "Medium Precip", "High Precip"))
+
+
+ggplot(pred_df, aes(x = temp, y = phi_mean, color = precip, fill = precip, group = precip)) +
+  geom_line(size = 1.2) +
+  geom_ribbon(aes(ymin = phi_lower, ymax = phi_upper), alpha = 0.25, color = NA) +
+  labs(
+    x = "Minimum Temperature",
+    y = "Predicted daily nest survival probability",
+    color = "Precipitation Level",
+    fill = "Precipitation Level"
+  ) +
+  theme_light() +
+  theme(legend.position = 'bottom')
+
+################################################################################
+###############################################################################X
