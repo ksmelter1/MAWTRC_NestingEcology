@@ -1,28 +1,24 @@
-
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: MovementProcess_Prep.RData (R workspace)
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script downloads movement data associated with each hens nesting attempt from movebank and exports hen movement data as RDS files.
-#' **Last Updated**: 2/25/25
+#' **Purpose**: This script downloads movement data associated with each hens nesting attempt from movebank 
+#' **Last Updated**: 12/27/25
 
 
 ################################################################################
 ## Load Packages 
 
-#' Vector of package names
+# Vector of package names
 packages <- c("purrr",
               "lubridate",
               "dplyr",
               "move2",
               "tidyverse")
 
-#' Function to load a package or install it if not already installed
+# Function to load a package or install it if not already installed
 load_packages <- function(package_name) {
   if (!require(package_name, character.only = TRUE)) {
     install.packages(package_name, dependencies = TRUE)
@@ -30,52 +26,64 @@ load_packages <- function(package_name) {
   }
 }
 
-#' Apply the function to each package name
+# Apply the function to each package name
 lapply(packages, load_packages)
 
 
-#' Read in nests csv
-nj.nests <- read_csv("Data Management/Csvs/Processed/Nests/Nests/20250219_CleanedNests_2022_2023_NJ.csv")
+# Read in nests csv
+nj.nests <- read_csv("Data Management/Csvs/Processed/Nests/Nests/New Jersey/20250219_CleanedNests_2022_2023_NJ.csv")
 nj.nests
 
+# Constrain to nests that were used (Case = 1) and not randomly generated nests available to hens
 nj.nests <- nj.nests %>%
   dplyr::filter(Case == "1")
 nj.nests
 
+# Read in captures csv
 captures <- read_csv("Data Management/Csvs/Raw/Captures/captures_nj.csv")
 captures
 
 ################################################################################
 ## Data Management
 
-#' Change 99s into NA Values
+# Change 99s into NA Values (There were 99s in this data unlike PA and MD)
+# Originally the database was coded to fill NAs with 99s
 nj.nests$EggsHatched[nj.nests$EggsHatched == 99] <- NA
 nj.nests$EggsUnhatched[nj.nests$EggsUnhatched == 99] <- NA
 nj.nests$EggsDestroyed[nj.nests$EggsDestroyed == 99] <- NA
 
-#' Create clutch size column and remove unnecessary column
-#' Clutch size is a minimum count 
+# Create clutch size column and remove unnecessary column
+# Clutch size is a minimum count 
 nj.nests <- nj.nests %>%
   dplyr::mutate(clutchsize = rowSums(select(., EggsHatched, EggsDestroyed, EggsUnhatched), na.rm = TRUE)) 
 glimpse(nj.nests)
 
+
 ################################################################################
 ## Incubation Data NJ
 
-#' Csv from incubation start and end script
-nests.inc <- read_csv("Data Management/Csvs/Processed/IncubationDates/20250131_NestAttempts_allbirds_NJ.csv")
+# Csv from incubation start and end script
+nests.inc <- read_csv("Data Management/Csvs/Processed/Incubation Dates/New Jersey/20250717_NestAttempts_allbirds_NJ_Ready.csv")
 nests.inc
 
-nests.inc$bandid <- as.numeric(nests.inc$bandid)
-nests.inc <- nests.inc %>%
-  dplyr::rename("BandID" = bandid)
-nj.nests$BandID <- as.numeric(nj.nests$BandID)
+# Read in sample from known fate model
+sample <- read_csv("Samples/New Jersey/NestingSample_NJ.updated.csv")
+sample  
+
+# Bind columns together
+# Create BirdID column
+nests.inc <- right_join(nests.inc, sample) %>%
+  dplyr::mutate(BirdID = str_extract(NestID, "\\d{4}")) 
+
+# Rename columns
 captures <- captures %>%
-  dplyr::rename("BandID" = bandid)
-captures$BandID <- as.numeric(captures$BandID)
+  dplyr::rename("BandID" = bandid) %>%
+  dplyr::mutate("BandID" = as.character(BandID))
+
+# Join columns together 
 nj.nests.test <- dplyr::inner_join(nests.inc, captures, by = "BandID")
 
-#' Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
+# Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
 nj.nests1 <- dplyr::inner_join(nj.nests,nj.nests.test, by = "NestID") %>%
   dplyr::select(-CheckDate.y, -...1) %>%
   dplyr::rename("CheckDate" = CheckDate.x)
@@ -87,7 +95,7 @@ for (i in 1:nrow(nj.nests1)) {
   startI <- nj.nests1$startI[i]  
   
   # Create the enddate by subtracting clutchsize (in days) from startI
-  nj.nests1$enddate[i] <- startI - clutchsize 
+  nj.nests1$enddate[i] <- startI - clutchsize - days(5)
   
   # Create the startdate by subtracting 14 days from the enddate
   nj.nests1$startdate[i] <- nj.nests1$enddate[i] - days(14)
@@ -99,18 +107,21 @@ for (i in 1:nrow(nj.nests1)) {
 # Convert 'startdate' and 'enddate' columns to Date format
 nj.nests1$startdate <- as.Date(nj.nests1$startdate)
 nj.nests1$enddate <- as.Date(nj.nests1$enddate)
-nj.nests1 <- nj.nests1 %>%
-  dplyr::rename("BirdID" = BandID.x)
-nj.nests1$BirdID <- paste0("0", nj.nests1$BandID)
-glimpse(nj.nests1)
 
+# Rename columns
+nj.nests1 <- nj.nests1 %>%
+  dplyr::rename("BandID" = BandID.y)
+
+# Group nests by study area for loops below
 nj.nests1.SJ <- nj.nests1 %>%
   dplyr::filter(studyarea == "SJ") %>%
-  dplyr::select(BirdID, BandID, startI, endI, clutchsize, NestID, startdate, enddate)
-
+  dplyr::select(-BirdID) %>%
+  dplyr::mutate(BirdID = BandID) %>%
+  dplyr::select(BirdID,BandID, startI, endI, clutchsize, NestID, startdate, enddate)
 nj.nests1.NJ <- nj.nests1 %>%
   dplyr::filter(studyarea == "NJ") %>%
   dplyr::select(BirdID, BandID, startI, endI, clutchsize, NestID, startdate, enddate)
+
 
 ################################################################################
 ## Connect to Movebank
@@ -122,7 +133,11 @@ login <- movebank_store_credentials(username = "Kyle.Smelter",
 
 
 ################################################################################
-## New Jersey South
+## Loops to Download Pre-Nesting GPS Data in New Jersey
+
+
+################################################################################
+## NJ South
 
 unique.ID.SJ<-unique(nj.nests1.SJ$NestID)
 
@@ -159,7 +174,7 @@ for(i in 1:nrow(tmp.subset.SJ)){
 
 
 ################################################################################
-## New Jersey North 
+## NJ North
 
 unique.ID.NJ<-unique(nj.nests1.NJ$NestID)
 
@@ -198,26 +213,34 @@ for (j in 1:length(unique.ID.NJ)){
 ################################################################################
 ## Organize GPS Data
 
-#' Convert move objects to dataframes
+# Convert move objects to dataframes
+# No data for NJ North yet
 full_all_SJ <- as.data.frame(full_all_SJ)
 full_all_NJ <- as.data.frame(full_all_NJ)
 
+# No NJ North data so proceed with this
 df.all <- full_all_SJ
   
   
-  #' Create df with all study areas
-  df.all <- rbind(full_all_EM, 
-                  full_all_WM) %>%
+  # Create df with all study areas
+  df.all <- rbind(full_all_SJ, 
+                  full_all_NJ) %>%
     dplyr::rename("BirdID"= individual_local_identifier) 
   
-#' Separate geometry lat and longs into separate columns and create new dataframe
-#' Organize timestamp to be formatted in year, month, day, hour, minutes, seconds
-#' Map function applies a function to each element of a vector
+# Separate geometry lat and longs into separate columns and create new dataframe
+# Organize timestamp to be formatted in year, month, day, hour, minutes, seconds
+# Map function applies a function to each element of a vector
 hens.all <- df.all%>%
   mutate(long = unlist(map(df.all$geometry,1)),
          lat = unlist(map(df.all$geometry,2))) %>%
   dplyr::rename("BirdID" = individual_local_identifier) %>%
-  dplyr::select(BirdID, timestamp,long, lat) 
+  dplyr::select(BirdID, timestamp,long, lat) %>%
+  st_drop_geometry()
 
 ################################################################################
+
+# Save GPS data for step generation 
+# Saved here: Data Management/RData/Pre-Nesting Movement Model/New Jersey/Covariates/Movebank_NJ_buffer.RData
+
 ################################################################################
+###############################################################################X

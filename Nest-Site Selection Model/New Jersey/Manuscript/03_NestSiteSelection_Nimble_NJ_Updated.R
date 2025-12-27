@@ -31,9 +31,9 @@ lapply(packages, load_packages)
 ## Data Preparation 
 
 #' Load in RData
-load("Data Management/RData/Nest-Site Selection/Covs/Multi-State/Manuscript/02_Covs_AllStates_Ready.RData")
+load("Data Management/RData/Nest-Site Selection/Covs/Multi-State/Manuscript/02_Covs_AllStates_Ready_Updated.RData")
 
-nj.sample <- read_csv("Samples/New Jersey/NestingSample_NJ.csv")
+nj.sample <- read_csv("Samples/New Jersey/NestingSample_NJ.updated.csv")
 nj.sample
 length(unique(nj.sample$NestID))
 
@@ -111,19 +111,10 @@ str(nest.data)
 glimpse(nest.data)
 summary(nest.data)
 
-#' Function to replace all NAs with 0 in a dataframe
-#' Since we scaled the data, the mean is zero
-fill_na_with_zero <- function(df) {
-  df[is.na(df)] <- 0
-  return(df)
-}
-
 #' Apply the function
-nest.data.ready <- fill_na_with_zero(nest.data)
+nest.data.ready <- nest.data
 
 #' Check
-summary(nest.data.ready)
-glimpse(nest.data.ready)
 cor(nest.data.ready$Primary, nest.data.ready$Secondary)
 
 ################################################################################
@@ -151,15 +142,15 @@ nestmodel<-nimbleCode({
 #' Water is not included in the model because no PA birds used it
 X <- cbind(
   rep(1, nrow(nest.data.ready)),   # Intercept (1)
+  nest.data.ready$Primary,         # Distance to Primary Road
+  nest.data.ready$Secondary,       # Distance to Secondary Road
   nest.data.ready$Mixed,           # Mixed Forest
   nest.data.ready$Evergreen,       # Evergreen Forest
   nest.data.ready$Developed,       # Developed
   nest.data.ready$Pasture,         # Pasture
-  nest.data.ready$Crop,
+  nest.data.ready$Crop,            # Crop
   nest.data.ready$Grassland,       # Grassland/Shrub
-  nest.data.ready$Wetland,         # Wetland
-  nest.data.ready$Primary,         # Distance to Primary Road
-  nest.data.ready$Secondary        # Distance to Secondary Road
+  nest.data.ready$Wetland          # Wetland
 )
 
 Consts <- list(str_ID = as.numeric(nest.data.ready$str_ID),
@@ -177,7 +168,7 @@ nimbleMCMC_samples <- nimbleMCMC(code = nestmodel,
                                  inits=Inits,
                                  data = Data,
                                  nburnin = 10000,
-                                 niter = 20000,
+                                 niter = 30000,
                                  thin=3)
 
 colMeans(nimbleMCMC_samples[, 13:22])
@@ -191,26 +182,43 @@ beta_samples <- nimbleMCMC_samples[, 13:22]
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
 
+################################################################################
+## Output Trace Plots
+
 # Convert the matrix to a data frame
 samples_df <- as.data.frame(samples_matrix) 
 
 #' Create a vector of new names
 new_names <- c("Intercept", 
+               "Distance to Primary Road",
+               "Distance to Secondary Road",
                "Mixed Forest",
                "Evergreen Forest", 
                "Developed", 
                "Pasture",
                "Crop",
                "Grassland/Shrub",
-               "Wetland", 
-               "Distance to Primary Road", 
-               "Distance to Secondary Road")
+               "Wetland")
 
 #' Assign the variable names to the columns of the beta_samples
 colnames(samples_df) <- new_names
 
 #' View the renamed data frame
 head(samples_df)
+
+# Force conversion to plain matrix
+samples_matrix <- as.matrix(nimbleMCMC_samples[, 13:22])
+
+# Convert to coda mcmc object
+mcmc_samples <- mcmc(samples_matrix)
+
+# Assign new names
+colnames(mcmc_samples) <- new_names
+
+# Generate trace plots
+MCMCtrace(mcmc_samples,
+          iter = 30000,
+          pdf = T)
 
 
 ################################################################################

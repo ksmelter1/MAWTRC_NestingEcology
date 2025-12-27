@@ -1,21 +1,21 @@
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis)
-#' author: "K. Smelter
+#' author: K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
 #'---
 #'  
 #' **Purpose**: This script creates beta estimate and prediction plots for the pre-nesting movement model
-#' **Last Updated**: 2/9/25
+#' **Last Updated**: 12/27/25
 
 ################################################################################
 ## Load Packages and Data
 
-#' Vector of package names
+# Vector of package names
 packages <- c("tidyverse",
               "gridExtra",
               "stringr")
 
-#' Function to load a package or install it if not already installed
+# Function to load a package or install it if not already installed
 load_packages <- function(package_name) {
   if (!require(package_name, character.only = TRUE)) {
     install.packages(package_name, dependencies = TRUE)
@@ -23,36 +23,27 @@ load_packages <- function(package_name) {
   }
 }
 
-#' Apply the function to each package name
+# Apply the function to each package name
 lapply(packages, load_packages)
 
-#' Read in named samples from Maryland
-samples_df <- readRDS("Data Management/RData/Pre-Nesting Movement Model/Maryland/Model Results/20250514_samples_df_MD_buffer.RDS")
+# Read in named samples from Pennsylvania pre-nesting movement model
+samples_df <- readRDS("Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/Model Results/20250513_samples_df.RDS")
 
 
 ################################################################################
 ## Data Prep for Beta Plot
 
-#' Reshape the data into long format for ggplot
+# Reshape the data into long format for ggplot
 samples_long <- samples_df %>%
   pivot_longer(cols = everything(), 
                names_to = "parameter", 
                values_to = "estimate") 
 
-#' View the reshaped data
+# View the reshaped data
 head(samples_long)
 
-#' Calculate 90% Bayesian credible intervals
-credible_intervals <- samples_long %>%
-  group_by(parameter) %>%
-  summarise(
-    lower = quantile(estimate, 0.05),   
-    upper = quantile(estimate, 0.95), 
-    .groups = 'drop'
-  )
-
-#' Calculate mean estimates for each parameter
-#' Calculate 90% credible intervals using quantiles
+# Calculate mean estimates for each parameter
+# Calculate 90% credible intervals using quantiles
 mean_estimates <- samples_long %>%
   dplyr::group_by(parameter) %>%
   summarise(
@@ -61,16 +52,18 @@ mean_estimates <- samples_long %>%
     upper = quantile(estimate, 0.95),  
     .groups = 'drop'
   ) %>%
-  dplyr::filter(parameter != "Intercept") 
+  dplyr::filter(parameter != "Intercept") %>%
+  dplyr::filter(parameter != "Elevation")
 mean_estimates
 
-#' Assign predictors to scales
+# Assign predictors to scales
 mean_estimates <- mean_estimates %>%
   dplyr::mutate(Scale = "Landscape") 
-
-#' Organize variables into levels to be displayed
-#' Filter out the intercept
-mean_estimates2 <- mean_estimates %>%
+  
+                                          
+# Organize variables into levels to be displayed
+# Filter out the intercept
+mean_estimates1 <- mean_estimates %>%
   dplyr::mutate(parameter = factor(parameter, 
                                    levels = c("Wetland",
                                               "Grassland/Shrub",
@@ -83,11 +76,11 @@ mean_estimates2 <- mean_estimates %>%
                                               "Distance to Secondary Road"
                                             ))) 
 
-#############
+################################################################################
 ## Beta Plot 
 
-#' Figure for Presentations
-#' Beta estimates and associated 90% credible intervals 
+# Figure for Presentations
+# Beta estimates and associated 90% credible intervals 
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
@@ -105,12 +98,12 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
   )
 p2.betas
 
-#' Figure for writing
-p2.betas <- ggplot(mean_estimates2, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
+# Figure for Pennsylvania publication
+p2.betas <- ggplot(mean_estimates1, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5, stroke = 1.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
-  labs(x = "Parameter", y = "Selection Relative to Deciduous Forest") +
+  labs(x = "Parameter", y = "Posterior Mean") +
   theme_minimal() + 
   coord_flip()+
   scale_color_manual(values = c("Landscape" = "#D65F5F")) +  
@@ -119,16 +112,18 @@ p2.betas <- ggplot(mean_estimates2, aes(x = parameter, y = mean_estimate, color 
     axis.title.x = element_text(margin = margin(t = 10), hjust = 0.45))
 p2.betas
 
-#' Save outputs as RData object
-save(p2.betas,
-     mean_estimates2, 
-     file = "pre.md.betas_buffer.RData")
+# Save as outputs as RData object
+save(p2.betas, 
+     mean_estimates1,
+     samples_df,
+     file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Pre-Nesting Movement/pre.pa.betas.updated.RData", 
+     overwrite = T)
 
 
 ################################################################################
 ## Prediction Plots
 
-#' Distance to Primary Road
+# Distance to Primary Road
 CIs <- matrix(quantile(samples_df[,1], c(0.05, 0.5, 0.95)), nrow=1)
 pred.seq<-seq(-1,1,0.1)
 pred.response.log<-pred.seq%*%CIs

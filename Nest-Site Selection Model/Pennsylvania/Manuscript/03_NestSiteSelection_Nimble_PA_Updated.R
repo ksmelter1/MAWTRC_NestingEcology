@@ -1,14 +1,11 @@
 #'---
-#' title: Nest-site selection of female wild turkeys in Pennsylvania (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' title: Nest-site selection of wild turkeys in Pennsylvania (an SSF analysis)
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: *InsertDate*_NimbleResults.RData
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script creates a Bayesian conditional logistic regression model for nest-site selection in JAGs using the gathered covariates 
-#' **Last Updated**: 1/18/25
+#' **Purpose**: This script fits a nest-site selection model for Pennsylvania
+#' **Last Updated**: 5/12/2025
 
 ################################################################################
 ## Load Packages 
@@ -18,7 +15,8 @@ packages <- c("matrixStats",
               "MCMCvis",
               "tidyverse",
               "sf",
-              "coda")
+              "coda",
+              "GGally")
 
 load_packages <- function(package_name) {
   if (!require(package_name, character.only = TRUE)) {
@@ -34,92 +32,125 @@ lapply(packages, load_packages)
 ## Data Preparation 
 
 #' Load in RData
-load("Data Management/RData/Nest-Site Selection/Covs/Multi-State/01_Covs_AllStates_Ready.RData")
+load("Data Management/RData/Nest-Site Selection/Covs/Multi-State/Manuscript/02_Covs_AllStates_Ready_Updated.RData")
 
-Sample_PA <- read_csv("NestingSample_PA.csv")
+#' This sample matches the Pre-Nesting and known fate model
+Sample_PA <- read_csv("Samples/Pennsylvania/PA_Sample_Updated.csv")
+Sample_PA
+
+#' Drop geometry column and create unique identifier for NestID
+pa.nests.covs <- sf::st_drop_geometry(pa.nests.covs)
+pa.nests.covs$NestID1 <- paste(pa.nests.covs$NestID, pa.nests.covs$PlotType, sep = "_")
+
+#' Read in basal area data
+basal_summary <- read_csv("Data Management/Csvs/Processed/Covariates/Pennsylvania/BasalArea.csv")
+
+#' Keep only samples that exist in Sample_PA in pa.nests.covs
 pa.nests.covs.1 <- right_join(pa.nests.covs, Sample_PA)
+pa.nests.covs.2 <- right_join(basal_summary, pa.nests.covs.1) 
 
-nest.data <- pa.nests.covs.1 
-str(pa.nests.covs)
+#' Zero values represent sites with no trees for basal area
+pa.nests.covs.2 <- pa.nests.covs.2 %>%
+  replace_na(list(Basal = 0)) %>%
+  dplyr::filter(Case != "NA")
+
+
+#' Rename object
+nest.data <- pa.nests.covs.2 
+str(nest.data)
 summary(nest.data)
 
-nest.data <- nest.data[-577, ]
-
+#' Subset dataframe and rename columns 
 nest.data <- nest.data %>%
-  dplyr::select(NestID, BandID, , PercGrassForb, PercWoody, AvgMaxVO,
-                Case, Developed, Deciduous, Mixed, Evergreen, Agriculture, 
+  dplyr::select(NestID, BandID, , PercGrassForb, PercWoody,
+                Case, Developed, Deciduous, Mixed, Evergreen, Pasture, Crop,
                 primary, secondary, StemCount, Grassland, AvgVO, Water, Wetland, 
-                PercFern) %>%
+                PercFern, Basal) %>%
   dplyr::rename("Primary" = primary) %>%
   dplyr::rename("Secondary" = secondary)
+nest.data
 
 #' Switch coding to UTF-8
 nest.data <- nest.data %>% 
   dplyr::mutate(across(everything(), ~ iconv(., to = "UTF-8")))
 
+#' Change variables to be scaled to numeric
 nest.data <- nest.data %>%
   dplyr::mutate(PercWoody = as.numeric(PercWoody)) %>%
   dplyr::mutate(PercGrassForb = as.numeric(PercGrassForb)) %>%
-  dplyr::mutate(AvgMaxVO = as.numeric(AvgMaxVO)) %>%
   dplyr::mutate(Primary = as.numeric(Primary)) %>%
   dplyr::mutate(Secondary = as.numeric(Secondary)) %>%
   dplyr::mutate(PercFern = as.numeric(PercFern)) %>%
   dplyr::mutate(AvgVO = as.numeric(AvgVO)) %>%
-  dplyr::mutate(StemCount = as.numeric(StemCount)) 
+  dplyr::mutate(StemCount = as.numeric(StemCount)) %>%
+  dplyr::mutate(Basal = as.numeric(Basal)) 
 glimpse(nest.data)
 str(nest.data)
 
+#' Scale continous predictor variables
 nest.data <- nest.data %>%
   dplyr::mutate(StemCount = scale(StemCount)) %>%
   dplyr::mutate(PercWoody = scale( PercWoody)) %>%
   dplyr::mutate(PercGrassForb = scale(PercGrassForb)) %>%
-  dplyr::mutate(AvgMaxVO = scale(AvgMaxVO)) %>%
   dplyr::mutate(Primary = scale(Primary)) %>%
   dplyr::mutate(Secondary = scale(Secondary)) %>%
   dplyr::mutate(PercFern = scale(PercFern)) %>%
-  dplyr::mutate(AvgVO = scale(AvgVO)) 
+  dplyr::mutate(AvgVO = scale(AvgVO)) %>%
+  dplyr::mutate(Basal = scale(Basal)) 
 str(nest.data)
 glimpse(nest.data)
 
+#' Convert all variables to numeric including all scaled predictors
 nest.data <- nest.data %>%
   dplyr::mutate(PercWoody = as.numeric(PercWoody)) %>%
   dplyr::mutate(PercGrassForb = as.numeric(PercGrassForb)) %>%
-  dplyr::mutate(AvgMaxVO = as.numeric(AvgMaxVO)) %>%
   dplyr::mutate(Primary = as.numeric(Primary)) %>%
   dplyr::mutate(Secondary = as.numeric(Secondary)) %>%
   dplyr::mutate(PercFern = as.numeric(PercFern)) %>%
   dplyr::mutate(AvgVO = as.numeric(AvgVO)) %>%
   dplyr::mutate(Developed = as.numeric(Developed)) %>%
-  dplyr::mutate(Agriculture = as.numeric(Agriculture)) %>%
+  dplyr::mutate(Pasture = as.numeric(Pasture)) %>%
+  dplyr::mutate(Crop = as.numeric(Crop)) %>%
   dplyr::mutate(Deciduous = as.numeric(Deciduous)) %>%
   dplyr::mutate(Mixed = as.numeric(Mixed)) %>%
   dplyr::mutate(Evergreen = as.numeric(Evergreen)) %>%
   dplyr::mutate(Grassland = as.numeric(Grassland)) %>%
   dplyr::mutate(Wetland = as.numeric(Wetland)) %>%
   dplyr::mutate(Water = as.numeric(Water)) %>%
-  dplyr::mutate(StemCount = as.numeric(StemCount))
+  dplyr::mutate(StemCount = as.numeric(StemCount)) %>%
+  dplyr::mutate(Basal = as.numeric(Basal))
 glimpse(nest.data)
 str(nest.data)
 summary(nest.data)
 
+# Keep only nests that have at least one potential nest option within strata
+nest.data <- nest.data %>%
+  dplyr::group_by(NestID) %>%
+  dplyr::filter(any(Case != 1) & any(Case == 0)) %>%
+  dplyr::ungroup()
+
+#' Drop geometry column and change case to numeric
+#' 1 the nest was used, 0 it was available to the hen 
 nest.data <- nest.data %>%
   st_drop_geometry() %>%
   dplyr::mutate(Case = as.numeric(Case))
 
+#' Order dataframe by NestID
 nest.data <- nest.data[order(nest.data$NestID),]
 
 #' Change Nest_ID_V to numeric 
 #' First must remove underlines
 nest.data$NestID <- gsub("_", "", nest.data$NestID)
-nest.data$NestID <- as.numeric(nest.data$NestID)
+nest.data$NestID<- as.numeric(nest.data$NestID)
 
 #' Create str_id column 
 #' This allows the loop to iterate through the steps associated with each bird 
 #' cur_group_id() gives a unique numeric identifier for the current group.
 nest.data <- nest.data %>%
-  group_by(NestID) %>%
-  mutate(str_ID=cur_group_id())
+  dplyr::group_by(NestID) %>%
+  dplyr::mutate(str_ID=cur_group_id())
 
+#' Check data
 str(nest.data)
 glimpse(nest.data)
 summary(nest.data)
@@ -133,27 +164,37 @@ fill_na_with_zero <- function(df) {
 
 #' Apply the function
 nest.data.ready <- fill_na_with_zero(nest.data)
+
+#' Order by strata ID
+nest.data.ready <- nest.data.ready %>%
+  dplyr::arrange(str_ID)
+
+#' Check
 summary(nest.data.ready)
 glimpse(nest.data.ready)
+cor(nest.data.ready$Primary, nest.data.ready$Secondary)
 
-cor(nest.data$Primary, nest.data$Secondary)
 
-
-###############################################
+################################################################################
 ## Nimble Model
+
+#' Conditional logistic regression
+#' Prior for stratum-specific intercept variance set to 10^6
+#' Prior for betas set to 0,1
 
 nestmodel<-nimbleCode({
   for (i in 1:I){
     use[i]~dpois(lambda[i])
     
-    log(lambda[i])<-inprod(beta[1:J],X[i,1:J])+alpha[str_ID[i]]
+    log(lambda[i])<-inprod(beta[1:J],X[i,1:J]) + alpha[str_ID[i]] 
   }
   
-  #' Priors
+  ### Priors for betas ###
   for(j in 1:J){
-    beta[j]~dnorm(0,sd=sqrt(1/0.0001))
+    beta[j]~dnorm(0, sd= 1)
   }
   
+  ### Priors for random effect ###
   for(k in 1:K){
     alpha[k]~dnorm(0,sd=sqrt(1/0.000001))
   }
@@ -161,7 +202,6 @@ nestmodel<-nimbleCode({
 )
 
 #' Model parameters
-#' Wetland is not included in the model due to a small sample size
 X<- cbind(
   rep(1, nrow(nest.data.ready)),   # Intercept (1)
   nest.data.ready$Primary,         # Distance to Primary Road
@@ -169,13 +209,23 @@ X<- cbind(
   nest.data.ready$Mixed,           # Mixed Forest
   nest.data.ready$Evergreen,       # Evergreen Forest
   nest.data.ready$Developed,       # Developed
-  nest.data.ready$Agriculture,     # Agriculture
+  nest.data.ready$Pasture,         # Pasture
+  nest.data.ready$Crop,            # Crop
+  nest.data.ready$Wetland,         # Wetland
   nest.data.ready$PercGrassForb,   # Percent Grass/Forb
   nest.data.ready$PercWoody,       # Percent Woody
-  nest.data.ready$StemCount,       # Woody Stem Count
   nest.data.ready$AvgVO,           # Visual Obstruction
   nest.data.ready$PercFern,        # Percent Fern
-  nest.data.ready$Grassland        # Grassland/Shrub
+  nest.data.ready$Grassland,       # Grassland/Shrub
+  nest.data.ready$Basal,           # Basal Area
+  nest.data.ready$StemCount        # Woody Stem Count
+)
+
+ggpairs(
+  as.data.frame(X), 
+  upper = list(continuous = wrap("cor", size = 5)),
+  diag = list(continuous = "barDiag"),
+  lower = list(continuous = "points")
 )
 
 Consts <- list(str_ID = as.numeric(nest.data.ready$str_ID),
@@ -188,6 +238,8 @@ Data<-list(X=X,use = nest.data.ready$Case)
 
 Inits<-list(beta=rep(0,ncol(X)),alpha=rep(0,length(unique(nest.data.ready$str_ID))))
 
+start <- Sys.time()
+
 nimbleMCMC_samples <- nimbleMCMC(code = nestmodel, 
                                  constants = Consts, 
                                  inits= Inits,
@@ -197,13 +249,15 @@ nimbleMCMC_samples <- nimbleMCMC(code = nestmodel,
                                  thin = 3,
                                  nchains = 1)
 
+end <- Sys.time()
+
 #' View traceplots
-MCMCtrace(nimbleMCMC_samples, pdf = F)
-colMeans(nimbleMCMC_samples[,159:171])
-colSds(nimbleMCMC_samples[,159:171])
+MCMCtrace(nimbleMCMC_samples[,266:281], iter = 20000, pdf = F)
+colMeans(nimbleMCMC_samples[,266:281])
+colSds(nimbleMCMC_samples[,266:281])
 
 #' Extract the posterior samples for the 'beta' parameters (columns 219 to 230)
-beta_samples <- nimbleMCMC_samples[, 159:171]
+beta_samples <- nimbleMCMC_samples[, 266:281]
 
 # Convert mcmc.list to matrix
 samples_matrix <- as.matrix(beta_samples)
@@ -212,10 +266,22 @@ samples_matrix <- as.matrix(beta_samples)
 samples_df <- as.data.frame(samples_matrix) 
 
 #' Create a vector of new names
-new_names <- c("Intercept", "Distance to Primary Road", "Distance to Secondary Road",
-               "Mixed Forest", "Evergreen Forest", "Developed", "Agriculture", 
-               "Percent Grass/Forb", "Percent Woody Vegetation", "Woody Stem Count",
-               "Visual Obstruction","Percent Fern", "Grassland/Shrub")
+new_names <- c("Intercept", 
+               "Distance to Primary Road",
+               "Distance to Secondary Road",
+               "Mixed Forest",
+               "Evergreen Forest", 
+               "Developed",
+               "Pasture", 
+               "Crop",
+               "Wetland",
+               "Percent Grass/Forb",
+               "Percent Woody Vegetation", 
+               "Visual Obstruction",
+               "Percent Fern", 
+               "Grassland/Shrub",
+               "Basal Area",
+               "Woody Stem Count")
 
 #' Assign the variable names to the columns of the beta_samples
 colnames(samples_df) <- new_names
@@ -224,9 +290,27 @@ colnames(samples_df) <- new_names
 head(samples_df)
 
 
-##########################################
+################################################################################
+## Output Trace Plots
+
+# Force conversion to plain matrix
+samples_matrix <- as.matrix(nimbleMCMC_samples[, 266:281])
+
+# Convert to coda mcmc object
+mcmc_samples <- mcmc(samples_matrix)
+
+# Assign new names
+colnames(mcmc_samples) <- new_names
+
+# Generate trace plots
+MCMCtrace(mcmc_samples,
+          iter = 30000,
+          pdf = T)
+
+
+################################################################################
 ## Save RData file *InsertDate_NimbleResults
 
 ################################################################################
-################################################################################
+###############################################################################X
 

@@ -1,6 +1,6 @@
 #'---
-#' title: Nest-site selection of wild turkeys in Pennsylvania (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' title: Nest-site selection of female wild turkeys in New Jersey
+#' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
 #' output:
 #'   html_document: 
@@ -8,17 +8,17 @@
 #'---
 #'  
 #' **Purpose**: This script produces coefficient and prediction plots of the model outputs
-#' **Last Updated**: 2/3/2025
+#' **Last Updated**: 12/27/2025
 
 ################################################################################
 ## Load Packages 
 
-#' Vector of package names
+# Vector of package names
 packages <- c("tidyverse",
               "ggpubr")
 
 
-#' Function to load a package or install it if not already installed
+# Function to load a package or install it if not already installed
 load_packages <- function(package_name) {
   if (!require(package_name, character.only = TRUE)) {
     install.packages(package_name, dependencies = TRUE)
@@ -26,28 +26,28 @@ load_packages <- function(package_name) {
   }
 }
 
-#' Apply the function to each package name
+# Apply the function to each package name
 lapply(packages, load_packages)
 
 
 ################################################################################
 ## Data Prep for Plots
 
-#' Load in RData
+# Load in RData
 load("Data Management/RData/Nest-Site Selection/New Jersey/Model Results/Manuscript/NSS_Results_NJ.RData")
 
 
 ################################################################################
 ## Data Prep for Beta Plot
 
-#' Reshape the data into long format for ggplot
+# Reshape the data into long format for ggplot
 samples_long <- samples_df %>%
   pivot_longer(cols = everything(), 
                names_to = "parameter", 
                values_to = "estimate") 
 
-#' Calculate mean estimates for each parameter
-#' Calculate 90% credible intervals using quantiles
+# Calculate mean estimates for each parameter
+# Calculate 90% credible intervals using quantiles
 mean_estimates <- samples_long %>%
   dplyr::group_by(parameter) %>%
   summarise(
@@ -59,17 +59,17 @@ mean_estimates <- samples_long %>%
   dplyr::filter(parameter != "Intercept") 
 mean_estimates
 
+# Assign covariate classes
 mean_estimates <- mean_estimates %>%
   mutate(Scale = case_when(
     parameter %in% c("Percent Grass/Forb", "Percent Woody Vegetation", "Horizontal Visual Obstruction", 
                      "Aerial Visual Obstruction", "Percent Fern") ~ "Nest",
     TRUE ~ "Landscape"
   ))
-
 mean_estimates
 
-#' Organize variables into levels to be displayed
-#' Filter out the intercept
+# Organize variables into levels to be displayed
+# Filter out the intercept
 mean_estimates <- mean_estimates %>%
   dplyr::mutate(parameter = factor(parameter, 
                             levels = c("Wetland",
@@ -87,7 +87,7 @@ mean_estimates
 ################################################################################
 ## Betas Plot 
 
-#' Figure for display in powerpoint presentations
+# Figure for display in powerpoint presentations
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
@@ -104,7 +104,7 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
         legend.position = "none")  
 p2.betas
 
-#' Figure for display in manuscript
+# Figure for display in manuscript
 p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5, stroke = 1.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
@@ -118,7 +118,10 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
   theme(axis.title.x = element_text(margin = margin(t = 10), hjust = 0.50))
 p2.betas
 
-save(p2.betas, mean_estimates, file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Nest-Site Selection/nss.nj.betas.RData")
+save(p2.betas, 
+     mean_estimates,
+     samples_df,
+     file = "MAWTRC Nesting Ecology Manuscript/Figure Code and Data/RData/Nest-Site Selection/nss.NJ.betas.updated.RData")
 
-################################################################################
+#################################################################################
 ################################################################################X

@@ -1,28 +1,24 @@
-
 #'---
 #' title: Habitat selection of female wild turkeys during pre-nesting (an SSF analysis)
-#' author: "K. Smelter, F. Buderman"
+#' author: K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output: MovementProcess_Prep.RData (R workspace)
-#'   html_document: 
-#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script downloads movement data associated with each hens nesting attempt from movebank and exports hen movement data as RDS files.
-#' **Last Updated**: 1/25/24
+#' **Purpose**: This script downloads movement data associated with each hens nesting attempt from movebank 
+#' **Last Updated**: 12/27/25
 
 
 ################################################################################
 ## Load Packages 
 
-#' Vector of package names
+# Vector of package names
 packages <- c("purrr",
               "lubridate",
               "dplyr",
               "move2",
               "tidyverse")
 
-#' Function to load a package or install it if not already installed
+# Function to load a package or install it if not already installed
 load_packages <- function(package_name) {
   if (!require(package_name, character.only = TRUE)) {
     install.packages(package_name, dependencies = TRUE)
@@ -30,50 +26,48 @@ load_packages <- function(package_name) {
   }
 }
 
-#' Apply the function to each package name
+# Apply the function to each package name
 lapply(packages, load_packages)
 
 
-#' Read in nests csv
-pa.nests <- read_csv("Data Management/Csvs/Processed/Nests/Nests/Pennsylvania/2025_CleanedNests_2022_2023_PA.csv")
+# Read in nests csv
+pa.nests <- read_csv("Data Management/Csvs/Processed/Nests/Nests/Pennsylvania/20250629_CleanedNests_2022_2023_2024.csv")
 pa.nests
 
 ################################################################################
 ## Data Management
 
-#' Change 99s into NA Values
-pa.nests$EggsHatch[pa.nests$EggsHatch == 99] <- NA
-pa.nests$EggsHatch[pa.nests$EggsUnhatch == 99] <- NA
-pa.nests$EggsDestroyed[pa.nests$EggsDestroyed == 99] <- NA
-pa.nests$EggsDepred[pa.nests$EggsDepred == 99] <- NA
-
-#' Create clutch size column and remove unnecessary column
-#' Clutch size is a minimum count 
+# Create clutch size column and remove unnecessary column
+# Clutch size is a minimum count 
 pa.nests <- pa.nests %>%
-  dplyr::mutate(clutchsize = rowSums(select(., EggsHatch, EggsDestroyed, EggsUnhatch, EggsDepred), na.rm = TRUE)) 
+  dplyr::mutate(clutchsize = rowSums(select(., EggsHatched, EggsDestroyed, EggsUnhatched, EggsDestroyed), na.rm = TRUE)) 
 glimpse(pa.nests)
 
 
 ################################################################################
 ## Prepare 4D Nest Data 
 
-#' Subset nesting data for 4D in year 2022
+# Subset nesting data for 4D in year 2022
 pa.nests.4D <- dplyr::filter(pa.nests, WMU =="4D")%>%
   dplyr::select(BandID, CheckDate, NestID, WMU, clutchsize)
 
 ################################################################################
 ## Incubation Data 4D
 
-#' Csv from incubation start and end script
-nests.inc <- read_csv("Data Management/Csvs/Processed/Incubation Dates/Pennsylvania/20250131_NestAttempts_allbirds_PA.csv")
+# Csv from incubation start and end script
+nests.inc <- read_csv("Data Management/Csvs/Processed/Incubation Dates/Pennsylvania/20250709_NestAttempts_allbirds_PA_Ready.csv") %>%
+  dplyr::select(-NestFate)
 nests.inc
 
-pa.sample <- read_csv("NestingSample_PA.csv")
+# Sample from known fate model to ensure consistency
+pa.sample <- read_csv("Samples/Pennsylvania/PA_Sample_Updated.csv") %>%
+  dplyr::select(-NestFate)
 pa.sample
 
+# Join nests.inc with pa.sample  
 nests.inc <- right_join(nests.inc, pa.sample)
 
-#' Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
+# Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
 pa.nests.4D1 <- dplyr::inner_join(pa.nests.4D, nests.inc, by = "NestID") %>%
   dplyr::select(-CheckDate.y) %>%
   dplyr::rename("CheckDate" = CheckDate.x)
@@ -85,10 +79,11 @@ for (i in 1:nrow(pa.nests.4D1)) {
   startI <- pa.nests.4D1$startI[i]  
   
   # Create the enddate by subtracting clutchsize (in days) from startI
-  pa.nests.4D1$enddate[i] <- startI - clutchsize 
+  # 5 day buffer
+  pa.nests.4D1$enddate[i] <- startI - clutchsize - days(5)
   
   # Create the startdate by subtracting 14 days from the enddate
-  pa.nests.4D1$startdate[i] <- pa.nests.4D1$enddate[i] - days(14)
+  pa.nests.4D1$startdate[i] <- pa.nests.4D1$enddate[i]- days(14)
   
   # Check the calculated dates
   print(paste("Row", i, ": Startdate =", pa.nests.4D1$startdate[i], ", Enddate =", pa.nests.4D1$enddate[i]))
@@ -105,7 +100,7 @@ glimpse(pa.nests.4D1)
 ################################################################################
 ## Prepare 3D Nest Data 
 
-#' Subset nesting data for 4D in year 2022
+# Subset nesting data for 4D
 pa.nests.3D <- dplyr::filter(pa.nests, WMU =="3D")%>%
   dplyr::select(BandID, CheckDate, NestID, WMU, clutchsize)
 
@@ -113,7 +108,7 @@ pa.nests.3D <- dplyr::filter(pa.nests, WMU =="3D")%>%
 ################################################################################
 ## Incubation Data 3D
 
-#' Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
+# Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
 pa.nests.3D1 <- dplyr::inner_join(pa.nests.3D, nests.inc, by = "NestID") %>%
   dplyr::select(-CheckDate.y) %>%
   dplyr::rename("CheckDate" = CheckDate.x)
@@ -125,7 +120,7 @@ for (i in 1:nrow(pa.nests.3D1)) {
   startI <- pa.nests.3D1$startI[i]  
   
   # Create the enddate by subtracting clutchsize (in days) from startI
-  pa.nests.3D1$enddate[i] <- startI - clutchsize 
+  pa.nests.3D1$enddate[i] <- startI - clutchsize - days(5)
   
   # Create the startdate by subtracting 14 days from the enddate
   pa.nests.3D1$startdate[i] <- pa.nests.3D1$enddate[i] - days(14)
@@ -144,7 +139,7 @@ glimpse(pa.nests.3D1)
 ################################################################################
 ## Prepare 2D Nest Data 
 
-#' Subset nesting data for 4D in year 2022
+# Subset nesting data for 4D in year 2022
 pa.nests.2D <- dplyr::filter(pa.nests, WMU =="2D")%>%
   dplyr::select(BandID, CheckDate, NestID, WMU, clutchsize)
 
@@ -152,7 +147,7 @@ pa.nests.2D <- dplyr::filter(pa.nests, WMU =="2D")%>%
 ################################################################################
 ## Incubation Data 2D
 
-#' Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
+# Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
 pa.nests.2D1 <- dplyr::inner_join(pa.nests.2D, nests.inc, by = "NestID") %>%
   dplyr::select(-CheckDate.y) %>%
   dplyr::rename("CheckDate" = CheckDate.x)
@@ -164,7 +159,7 @@ for (i in 1:nrow(pa.nests.2D1)) {
   startI <- pa.nests.2D1$startI[i]  
   
   # Create the enddate by subtracting clutchsize (in days) from startI
-  pa.nests.2D1$enddate[i] <- startI - clutchsize 
+  pa.nests.2D1$enddate[i] <- startI - clutchsize - days(5)
   
   # Create the startdate by subtracting 14 days from the enddate
   pa.nests.2D1$startdate[i] <- pa.nests.2D1$enddate[i] - days(14)
@@ -184,7 +179,7 @@ glimpse(pa.nests.2D1)
 ################################################################################
 ## Prepare 5C Nest Data 
 
-#' Subset nesting data for 4D in year 2022
+# Subset nesting data for 4D in year 2022
 pa.nests.5C <- dplyr::filter(pa.nests, WMU =="5C")%>%
   dplyr::select(BandID, CheckDate, NestID, WMU, clutchsize)
 
@@ -192,7 +187,7 @@ pa.nests.5C <- dplyr::filter(pa.nests, WMU =="5C")%>%
 ################################################################################
 ## Incubation Data 5C
 
-#' Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
+# Merge pa.nests.4D and nests.inc, only keep nests that exist in both pa.nests.4D and nests.inc
 pa.nests.5C1 <- dplyr::inner_join(pa.nests.5C, nests.inc, by = "NestID") %>%
   dplyr::select(-CheckDate.y) %>%
   dplyr::rename("CheckDate" = CheckDate.x)
@@ -204,7 +199,7 @@ for (i in 1:nrow(pa.nests.5C1)) {
   startI <- pa.nests.5C1$startI[i]  
   
   # Create the enddate by subtracting clutchsize (in days) from startI
-  pa.nests.5C1$enddate[i] <- startI - clutchsize 
+  pa.nests.5C1$enddate[i] <- startI - clutchsize - days(5)
   
   # Create the startdate by subtracting 14 days from the enddate
   pa.nests.5C1$startdate[i] <- pa.nests.5C1$enddate[i] - days(14)
@@ -229,8 +224,13 @@ login <- movebank_store_credentials(username = "Kyle.Smelter",
                                     key="Kyle",
                                     force= T)
 
+
 ################################################################################
-## WMU 4D 
+## Loop to Download Pre-Nesting GPS Data in Pennsylvania
+
+
+################################################################################
+## WMU 4D
 
 unique.ID.4d<-unique(pa.nests.4D1$NestID)
 
@@ -264,6 +264,9 @@ for(i in 1:nrow(tmp.subset.4d)){
   }
 }
 }
+
+# Save data
+saveRDS(full_all_4d, "Data Management/RData/prenesting_raw_gps_4D.RDS")
 
 
 ################################################################################
@@ -303,6 +306,9 @@ for (j in 1:length(unique.ID.3d)){
   }
 }
 
+# Save data
+saveRDS(full_all_3d, "prenesting_raw_gps_3D.RDS")
+
 
 ################################################################################
 ##  WMU 2D 
@@ -340,6 +346,8 @@ for (j in 1:length(unique.ID.2d)){
   }
 }
 
+# Save data
+saveRDS(full_all_2d, "prenesting_raw_gps_2D.RDS")
 
 ################################################################################
 ##  WMU 5C 
@@ -378,32 +386,46 @@ for (j in 1:length(unique.ID.5c)){
   }
 }
 
+# Save data
+saveRDS(full_all_5c, "prenesting_raw_gps_5c.RDS")
+
 
 ################################################################################
 ## Organize GPS Data
 
-#' Convert move objects to dataframes
+# Read RDS files with movement data
+full_all_3d <- readRDS("Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/GPS Data/prenesting_raw_gps_3D.RDS")
+full_all_4d <- readRDS("Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/GPS Data/prenesting_raw_gps_4D.RDS")
+full_all_2d <- readRDS("Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/GPS Data/prenesting_raw_gps_2D.RDS")
+full_all_5c <- readRDS("Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/GPS Data/prenesting_raw_gps_5C.RDS")
+
+
+# Convert move objects to dataframes
 full_all_3d <- as.data.frame(full_all_3d)
 full_all_4d <- as.data.frame(full_all_4d)
 full_all_2d <- as.data.frame(full_all_2d)
 full_all_5c <- as.data.frame(full_all_5c)
 
-unique(full_all_5c$individual_local_identifier)
-
-  #' Create df with all study areas
-  df.all <- rbind(full_all_5c, 
+# Create df with all study areas
+df.all <- rbind(full_all_5c, 
                   full_all_3d, 
                   full_all_2d, 
                   full_all_4d) %>%
     dplyr::rename("BirdID"= individual_local_identifier) 
   
-#' Separate geometry lat and longs into separate columns and create new dataframe
-#' Organize timestamp to be formatted in year, month, day, hour, minutes, seconds
-#' Map function applies a function to each element of a vector
+# Separate geometry lat and longs into separate columns and create new dataframe
+# Organize timestamp to be formatted in year, month, day, hour, minutes, seconds
+# Map function applies a function to each element of a vector
 hens.all <- df.all%>%
   mutate(long = unlist(map(df.all$geometry,1)),
          lat = unlist(map(df.all$geometry,2))) %>%
   dplyr::select(BirdID, timestamp,long, lat) 
 
 ################################################################################
+## Save RData file with organized GPS data
+
+# Saved here
+#("Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/Covariates/Final/Movebank_PA_Buffer.RData")
+
 ################################################################################
+###############################################################################X

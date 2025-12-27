@@ -1,12 +1,15 @@
+
 #'---
-#' title: Nest-site selection of wild turkeys in Pennsylvania (an SSF analysis)
+#' title: Nest-site selection of female wild turkeys in Pennsylvania
 #' author: "K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
+#' output: *InsertDate*_Covs_AllStates_Ready
+#'   html_document: 
+#'     toc: true
 #'---
 #'  
-#' **Purpose**: This script obtains NLCD values for used and available nests in each state
-#' **Last Updated**: 5/12/2025
-
+#' **Purpose**: This script calculates the distance from each 30m x 30m raster cell to the nearest primary and secondary road
+#' **Last Updated**: 12/27/25
 
 ################################################################################
 ## Load Packages 
@@ -28,13 +31,13 @@ load_packages <- function(package_name) {
 
 lapply(packages, load_packages)
 
-#' Load in landcover
+# Load in landcover
 load("Data Management/RData/Nest-Site Selection/Covs/Multi-State/Manuscript/01_Covs_AllStates_Landcover.RData")
 
 ################################################################################
 ## Create Distance from Road Rasters 
 
-#' Download local and state road data from all counties in each of the three states
+# Download local and state road data from all counties in each of the three states
 # pa.roads <- tigris::roads(state = "Pennsylvania", 
 #                           county = c("Adams", "Allegheny", "Armstrong", "Beaver", "Bedford", 
 #                                      "Berks", "Blair", "Bradford", "Bucks", "Butler", "Cambria", 
@@ -70,17 +73,17 @@ table(nj.roads$RTTYP)
 table(md.roads$RTTYP)
 
 
-#' Define Albers Equal Area CRS (EPSG:5070)
+# Define Albers Equal Area CRS (EPSG:5070)
 albers_crs <- 5070
 
-#' Transform road data to Albers CRS for PA, NJ, and MD roads
+# Transform road data to Albers CRS for PA, NJ, and MD roads
 # pa.roads <- st_transform(pa.roads, crs = albers_crs)
 nj.roads <- st_transform(nj.roads, crs = albers_crs)
 md.roads <- st_transform(md.roads, crs = albers_crs)
 
 
-#' Remove NA values for road type
-#' If else statement to group by road type
+# Remove NA values for road type
+# If else statement to group by road type
 # pa.roads <- pa.roads %>% drop_na(RTTYP)
 # pa.roads$Type <- ifelse(pa.roads$RTTYP == "M" | pa.roads$RTTYP == "C", "Secondary","Primary")
 # pa.roads.prim <- pa.roads %>%
@@ -88,8 +91,8 @@ md.roads <- st_transform(md.roads, crs = albers_crs)
 # pa.roads.sec <- pa.roads %>%
 #   dplyr::filter(Type == "Secondary")
 
-#' Remove NA values for road type
-#' If else statement to group by road type
+# Remove NA values for road type
+# If else statement to group by road type
 nj.roads <- nj.roads %>% drop_na(RTTYP)
 nj.roads$Type <- ifelse(nj.roads$RTTYP == "M" | nj.roads$RTTYP == "C","Secondary","Primary")
 nj.roads.prim <- nj.roads %>%
@@ -97,8 +100,8 @@ nj.roads.prim <- nj.roads %>%
 nj.roads.sec <- nj.roads %>%
   dplyr::filter(Type == "Secondary")
 
-#' Remove NA values for road type
-#' If else statement to group by road type
+# Remove NA values for road type
+# If else statement to group by road type
 md.roads <- md.roads %>% drop_na(RTTYP)
 md.roads$Type <- ifelse(md.roads$RTTYP == "M" | md.roads$RTTYP =="C", "Secondary","Primary")
 md.roads.prim <- md.roads %>%
@@ -110,32 +113,32 @@ md.roads.sec <- md.roads %>%
 ################################################################################
 ## Load in NLCD Rasters for use as Templates
 
-#' Read in NLCD
+# Read in NLCD
 pa.nlcd <- terra::rast("Data Management/Rasters/NLCD/Pennsylvania/pa.nlcd.tif")
 
-#' Create skeleton raster
+# Create skeleton raster
 pa.nlcd
 
-#' Format skeleton raster dimensions based on NLCD
+# Format skeleton raster dimensions based on NLCD
 pa.r <- terra::rast(nrow= 11063, ncol= 17330, xmin= 1261935, ymin= 1962645, nlyr=1,
                  xmax= 1781835, ymax= 2294535, crs= "epsg:5070")
 
-#' Read in NLCD
+# Read in NLCD
 nj.nlcd <- terra::rast("Data Management/Rasters/NLCD/New Jersey/nj.nlcd.tif")
 
-#' Create skeleton raster
+# Create skeleton raster
 nj.nlcd
 
-#' Format skeleton raster dimensions based on NLCD
+# Format skeleton raster dimensions based on NLCD
 nj.r <- terra::rast(nrow= 9556, ncol= 4101, xmin= 1725345  , ymin= 1949775, nlyr=1,
                      xmax= 1848375, ymax= 2236455, crs= "epsg:5070")
-#' Read in NLCD
+# Read in NLCD
 md.nlcd <- terra::rast("Data Management/Rasters/NLCD/Maryland/md.nlcd.tif")
 
-#' Create skeleton raster
+# Create skeleton raster
 md.nlcd
 
-#' Format skeleton raster dimensions based on NLCD
+# Format skeleton raster dimensions based on NLCD
 md.r <- terra::rast(nrow= 6975, ncol= 13535, xmin= 1396635, ymin= 1828485, nlyr=1,
                   xmax= 1802685, ymax= 2037735, crs= "epsg:5070")
   
@@ -185,7 +188,7 @@ md.r <- terra::rast(nrow= 6975, ncol= 13535, xmin= 1396635, ymin= 1828485, nlyr=
 ################################################################################
 ## New Jersey
 
-#' Rasterize road layer
+# Rasterize road layer
 nj.roads.rast <- terra::rasterize(nj.roads, nj.r, fun = min)
 nj.dist <- distance(nj.roads.rast) #' Calculate distance to each 30m x 30m cell
 nj.dist <- crop(nj.dist, nj.nlcd)
@@ -196,9 +199,9 @@ writeRaster(nj.dist, "Data Management/Rasters/Roads/New Jersey/NjRoadRast.tiff",
             overwrite = T)
 
 
-#' Rasterize road layer
+# Rasterize road layer
 nj.roads.prim.rast <- terra::rasterize(nj.roads.prim, nj.r, fun=min)
-nj.dist.prim <- distance(nj.roads.prim.rast) #' Calculate distance to each 30m x 30m cell
+nj.dist.prim <- distance(nj.roads.prim.rast) # Calculate distance to each 30m x 30m cell
 nj.dist.prim <- crop(nj.dist.prim, nj.nlcd)
 nj.dist.prim <- mask(nj.dist.prim, nj.nlcd)
 raster_crs <- crs(nj.dist.prim)
@@ -207,9 +210,9 @@ writeRaster(nj.dist.prim, "Data Management/Rasters/Roads/New Jersey/NjRoadRast.P
             overwrite = T)
 nj.dist.prim<- terra::rast("Data Management/Rasters/Roads/New Jersey/NjRoadRast.Prim.tiff")
 
-#' Rasterize road layer
+# Rasterize road layer
 nj.roads.sec.rast <- terra::rasterize(nj.roads.sec, nj.r, fun=min)
-nj.dist.sec <- distance(nj.roads.sec.rast) #' Calculate distance to each 30m x 30m cell
+nj.dist.sec <- distance(nj.roads.sec.rast) # Calculate distance to each 30m x 30m cell
 nj.dist.sec <- crop(nj.dist.sec, nj.nlcd)
 nj.dist.sec <- mask(nj.dist.sec, nj.nlcd)
 raster_crs <- crs(nj.dist.sec)
@@ -222,9 +225,9 @@ nj.dist.sec<- terra::rast("Data Management/Rasters/Roads/New Jersey/NjRoadRast.S
 ################################################################################
 ## Maryland
 
-#' Rasterize road layer
+# Rasterize road layer
 md.roads.rast <- terra::rasterize(md.roads, md.r, fun = min)
-md.dist <- distance(md.roads.rast) #' Calculate distance to each 30m x 30m cell
+md.dist <- distance(md.roads.rast) # Calculate distance to each 30m x 30m cell
 md.dist <- crop(md.dist, md.nlcd)
 md.dist <- mask(md.dist, md.nlcd)
 raster_crs <- crs(md.dist)
@@ -233,9 +236,9 @@ writeRaster(md.dist, "Data Management/Rasters/Roads/Maryland/MdRoadRast.tiff",
             overwrite = T)
 md.dist <- terra::rast("Data Management/Rasters/Roads/Maryland/MdRoadRast.tiff")
 
-#' Rasterize road layer
+# Rasterize road layer
 md.roads.prim.rast <- terra::rasterize(md.roads.prim, md.r, fun=min)
-md.dist.prim <- distance(md.roads.prim.rast) #' Calculate distance to each 30m x 30m cell
+md.dist.prim <- distance(md.roads.prim.rast) # Calculate distance to each 30m x 30m cell
 md.dist.prim <- crop(md.dist.prim, md.nlcd)
 md.dist.prim <- mask(md.dist.prim, md.nlcd)
 raster_crs <- crs(md.dist.prim)
@@ -244,9 +247,9 @@ writeRaster(md.dist.prim, "Data Management/Rasters/Roads/Maryland/MdRoadRast.Pri
             overwrite = T)
 md.dist.prim<- terra::rast("Data Management/Rasters/Roads/Maryland/MdRoadRast.Prim.tiff")
 
-#' Rasterize road layer
+# Rasterize road layer
 md.roads.sec.rast <- terra::rasterize(md.roads.sec, md.r, fun=min)
-md.dist.sec <- distance(md.roads.sec.rast) #' Calculate distance to each 30m x 30m cell
+md.dist.sec <- distance(md.roads.sec.rast) # Calculate distance to each 30m x 30m cell
 md.dist.sec <- crop(md.dist.sec, md.nlcd)
 md.dist.sec <- mask(md.dist.sec, md.nlcd)
 raster_crs <- crs(md.dist.sec)
@@ -259,14 +262,14 @@ md.dist.sec<- terra::rast("Data Management/Rasters/Roads/Maryland/MdRoadRast.Sec
 ################################################################################
 ## Extract Distances to Roads- Pennsylvania
 
-#' PASDA Raster
+# PASDA Raster
 pasda.dist.prim <- terra::rast("Data Management/Rasters/Roads/Pennsylvania/PaRoadRast.Prim.tiff")
 pasda.dist.sec <- terra::rast("Data Management/Rasters/Roads/Pennsylvania/PaRoadRast.Sec.tiff")
 
-#' Read in nest data with landcover
+# Read in nest data with landcover
 pa.nests.landcov.sf <- pa.nests.landcov
 
-#' Extract point value at each nest
+# Extract point value at each nest
 dist.prim.out <-terra::extract(pasda.dist.prim, pa.nests.landcov.sf) %>%
   dplyr::select(-ID)%>%
   dplyr::rename("primary" = layer)
@@ -307,7 +310,7 @@ pa.nests.covs <- cbind(pa.nests.landcov.sf, pa.nests.landcov.sf.roads) %>%
                 ) 
 
 
-#' Convert land cover classifications to a categorical variable and create separate columns
+# Convert land cover classifications to a categorical variable and create separate columns
 pa.nests.covs$Pasture <- ifelse(pa.nests.covs$landuse == "Pasture", 1, 0)
 pa.nests.covs$Crop <- ifelse(pa.nests.covs$landuse == "Crop", 1, 0)
 pa.nests.covs$Developed <- ifelse(pa.nests.covs$landuse == "Developed", 1, 0)
@@ -322,10 +325,10 @@ pa.nests.covs$Water <- ifelse(pa.nests.covs$landuse == "Open Water", 1, 0)
 ################################################################################
 ## Extract Distances to Roads- New Jersey
 
-#' Read in nest data with landcover
+# Read in nest data with landcover
 nj.nests.landcov <- nj.nests.landcov
 
-#' Extract point value at each nest
+# Extract point value at each nest
 dist.prim.out <-terra::extract(nj.dist.prim, nj.nests.landcov) %>%
   dplyr::select(-ID)%>%
   dplyr::rename("primary" = layer)
@@ -348,7 +351,7 @@ nj.nests.covs <- cbind(nj.nests.landcov, nj.nests.landcov.sf.roads) %>%
 
 nj.nests.covs$BandID <- str_sub(nj.nests.covs$NestID, 1, 4)
 
-#' Convert land cover classifications to a categorical variable and create separate columns
+# Convert land cover classifications to a categorical variable and create separate columns
 nj.nests.covs$Pasture <- ifelse(nj.nests.covs$landuse == "Pasture", 1, 0)
 nj.nests.covs$Crop <- ifelse(nj.nests.covs$landuse == "Crop", 1, 0)
 nj.nests.covs$Developed <- ifelse(nj.nests.covs$landuse == "Developed", 1, 0)
@@ -363,7 +366,7 @@ nj.nests.covs$Water <- ifelse(nj.nests.covs$landuse == "Open Water", 1, 0)
 ################################################################################
 ## Extract Distances to Roads- Maryland
 
-#' Extract point value at each nest
+# Extract point value at each nest
 dist.prim.out <-terra::extract(md.dist.prim, md.nests.landcov) %>%
   dplyr::select(-ID)%>%
   dplyr::rename("primary" = layer)
@@ -386,7 +389,7 @@ md.nests.covs <- cbind(md.nests.landcov, md.nests.landcov.sf.roads) %>%
 
 md.nests.covs$BandID <- str_sub(md.nests.covs$NestID, 1, 4)
 
-#' Create dummy variables for land cover classifications
+# Convert land cover classifications to a categorical variable and create separate columns
 md.nests.covs$Pasture <- ifelse(md.nests.covs$landuse == "Pasture", 1, 0)
 md.nests.covs$Crop <- ifelse(md.nests.covs$landuse == "Crop", 1, 0)
 md.nests.covs$Developed <- ifelse(md.nests.covs$landuse == "Developed", 1, 0)
@@ -402,4 +405,5 @@ md.nests.covs$Water <- ifelse(md.nests.covs$landuse == "Open Water", 1, 0)
 ## Save RData file *InsertDate_Covs
 
 ################################################################################
-###############################################################################X
+################################################################################
+

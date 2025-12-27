@@ -34,8 +34,7 @@ lapply(packages, load_packages)
 ## Data Prep for Plots
 
 #' Load in RData
-load("Data Management/RData/Nest-Site Selection/ModelResults/PreliminaryResults/20250206_NimbleResults.RData")
-
+#load("Data Management/RData/Nest-Site Selection/Pennsylvania/Model Results/Manuscript/03_NSS_PA_Results.RData")
 
 
 ################################################################################
@@ -65,8 +64,10 @@ mean_estimates <- mean_estimates %>%
     parameter %in% c("Percent Grass/Forb",
                      "Percent Woody Vegetation",
                      "Visual Obstruction", 
-                     "Woody Stem Count",
-                     "Percent Fern") ~ "Nest",
+                     "Percent Fern",
+                     "Visual Obstruction",
+                     "Basal Area",
+                     "Woody Stem Count") ~ "Nest",
     TRUE ~ "Landscape"
   ))
 
@@ -76,30 +77,32 @@ mean_estimates
 #' Filter out the intercept
 mean_estimates <- mean_estimates %>%
   dplyr::mutate(parameter = factor(parameter, 
-                            levels = c(
+                            levels = c( "Wetland",
                                        "Grassland/Shrub",
                                        "Mixed Forest",
                                        "Evergreen Forest",
                                        "Developed",
-                                       "Agriculture",
+                                       "Pasture",
+                                       "Crop",
                                        "Distance to Secondary Road",
                                        "Distance to Primary Road",
                                        "Visual Obstruction",
-                                       "Woody Stem Count",
+                                       "Basal Area",
                                        "Percent Woody Vegetation", 
                                        "Percent Grass/Forb",
-                                       "Percent Fern"))) 
+                                       "Percent Fern",
+                                       "Woody Stem Count"))) 
 mean_estimates
 
 
 ################################################################################
 ## Betas Plot 
 
-mean_estimates <- mean_estimates %>%
+mean_estimates1 <- mean_estimates %>%
   mutate(Scale = factor(Scale, levels = c("Nest", "Landscape")))
 
 #' Figure for display in powerpoint presentations
-p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
+p2.betas <- ggplot(mean_estimates1, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
@@ -115,7 +118,7 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
         legend.position = "none")  
 p2.betas
 
-p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
+p2.betas <- ggplot(mean_estimates1, aes(x = parameter, y = mean_estimate, color = Scale, shape = Scale)) +
   geom_point(size = 3.5, stroke = 1.5) +  
   geom_errorbar(aes(ymin = lower, ymax = upper), width = 0.2, size = 1.1) +  
   geom_hline(yintercept = 0, linetype = "dashed", color = "black") +  
@@ -132,20 +135,24 @@ p2.betas <- ggplot(mean_estimates, aes(x = parameter, y = mean_estimate, color =
 
 p2.betas
 
+save(p2.betas,
+     mean_estimates1,
+     samples_df,
+     file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Nest-Site Selection/nss.pa.betas.updated.RData")
 
 ################################################################################
 ## Prediction Plots
 
 #' Max Height Visual Obstruction
-CIs <- matrix(quantile(samples_df[,8], c(0.05, 0.5, 0.95)), nrow=1)
+CIs <- matrix(quantile(samples_df[,15], c(0.05, 0.5, 0.95)), nrow=1)
 pred.seq<-seq(-1,1,0.1)
 pred.response.log<-pred.seq%*%CIs
 pred.response<-data.frame(exp(pred.response.log))
 colnames(pred.response)<-c("lCI","median","uCI")
 p2.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#A44200", linetype=2, alpha=0.1) +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "black", linetype=2, alpha=0.1) +
   theme_minimal() +
-  xlab("Aerial Visual Obstruction") +
+  xlab("Basal Area") +
   ylab("Relative Probability of Use") +
   theme(
     axis.title.x = element_text(margin = margin(t = 10)), 
@@ -153,16 +160,16 @@ p2.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() 
 p2.predict
 
 
-#' Horizontal Visual Obstruction
-CIs <- matrix(quantile(samples_df[,11], c(0.05, 0.5, 0.95)), nrow=1)
+#' Visual Obstruction
+CIs <- matrix(quantile(samples_df[,12], c(0.05, 0.5, 0.95)), nrow=1)
 pred.seq<-seq(-1,1,0.1)
 pred.response.log<-pred.seq%*%CIs
 pred.response<-data.frame(exp(pred.response.log))
 colnames(pred.response)<-c("lCI","median","uCI")
 p3.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
-  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "#A44200", linetype=2, alpha=0.1) +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "black", linetype=2, alpha=0.1) +
   theme_minimal() +
-  xlab("Horizontal Visual Obstruction") +
+  xlab("Visual Obstruction") +
   ylab("Relative Probability of Use") +
   theme(
     axis.title.x = element_text(margin = margin(t = 10)), 
@@ -170,11 +177,77 @@ p3.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() 
 p3.predict
 
 
+#' Woody Stem Count
+CIs <- matrix(quantile(samples_df[,16], c(0.05, 0.5, 0.95)), nrow=1)
+pred.seq<-seq(-1,1,0.1)
+pred.response.log<-pred.seq%*%CIs
+pred.response<-data.frame(exp(pred.response.log))
+colnames(pred.response)<-c("lCI","median","uCI")
+p4.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "black", linetype=2, alpha=0.1) +
+  theme_minimal() +
+  xlab("Woody Stem Count") +
+  ylab("Relative Probability of Use") +
+  theme(
+    axis.title.x = element_text(margin = margin(t = 10)), 
+    axis.title.y = element_blank())
+p4.predict
+
+
+#' Percent Fern
+CIs <- matrix(quantile(samples_df[,13], c(0.05, 0.5, 0.95)), nrow=1)
+pred.seq<-seq(-1,1,0.1)
+pred.response.log<-pred.seq%*%CIs
+pred.response<-data.frame(exp(pred.response.log))
+colnames(pred.response)<-c("lCI","median","uCI")
+p5.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "black", linetype=2, alpha=0.1) +
+  theme_minimal() +
+  xlab("Percent Fern") +
+  ylab("Relative Probability of Use") +
+  theme(
+    axis.title.x = element_text(margin = margin(t = 10)), 
+    axis.title.y = element_blank())
+p5.predict
+
+
+#' Percent Woody Vegetation
+CIs <- matrix(quantile(samples_df[,11], c(0.05, 0.5, 0.95)), nrow=1)
+pred.seq<-seq(-1,1,0.1)
+pred.response.log<-pred.seq%*%CIs
+pred.response<-data.frame(exp(pred.response.log))
+colnames(pred.response)<-c("lCI","median","uCI")
+p6.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "black", linetype=2, alpha=0.1) +
+  theme_minimal() +
+  xlab("Percent Woody Vegetation") +
+  ylab("Relative Probability of Use") +
+  theme(
+    axis.title.x = element_text(margin = margin(t = 10)), 
+    axis.title.y = element_blank())
+p6.predict
+
+#' Pasture
+CIs <- matrix(quantile(samples_df[,6], c(0.05, 0.5, 0.95)), nrow=1)
+pred.seq<-seq(-1,1,0.1)
+pred.response.log<-pred.seq%*%CIs
+pred.response<-data.frame(exp(pred.response.log))
+colnames(pred.response)<-c("lCI","median","uCI")
+p7.predict <- ggplot(data=pred.response, aes(x=pred.seq, y=median))+geom_line() +
+  geom_ribbon(aes(ymin=lCI, ymax=uCI), fill = "black", linetype=2, alpha=0.1) +
+  theme_minimal() +
+  xlab("Developed") +
+  ylab("Relative Probability of Use") +
+  theme(
+    axis.title.x = element_text(margin = margin(t = 10)), 
+    axis.title.y = element_blank())
+p7.predict
+
 ################################################################################
 ## Create panels
 
-plot_combined <- ggarrange(p2.predict, p3.predict, 
-                           nrow = 1, ncol = 2) %>% 
+plot_combined <- ggarrange(p2.predict, p3.predict, p4.predict, p5.predict, p6.predict,
+                           nrow = 3, ncol = 2) %>% 
   annotate_figure(left = text_grob("Relative Probability of Use", rot = 90))
 plot_combined
 
