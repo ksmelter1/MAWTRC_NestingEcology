@@ -1,14 +1,14 @@
 #---
 # title: Nest Success Modeling of Wild Turkeys in the Mid-Atlantic Region
-# authors: "K. Smelter
+# authors: K. Smelter
 # date: "`r format(Sys.time(), '%d %B, %Y')`"
 # output:
 #   html_document: 
 #     toc: true
 #---
 #  
-# **Purpose**: This script prepares Pennsylvania data for the nest survival analysis
-# **Key Changes**: This script incorporates 2024 data
+#' **Purpose**: This script prepares Pennsylvania data for the nest survival analysis
+#' **Key Changes**: This script incorporates 2024 data
 
 ################################################################################
 ## Load Packages
@@ -187,6 +187,12 @@ nests.scaled <- nests.scaled %>%
   dplyr::mutate("Nest Incubation Date" = scale(lubridate::yday(startI))) 
 nests.scaled$`Nest Incubation Date` <- as.numeric(nests.scaled$`Nest Incubation Date`)
 
+# Create Renest variable
+nests.scaled$Renest <- ifelse(
+  substr(nests.scaled$NestID, nchar(nests.scaled$NestID), nchar(nests.scaled$NestID)) != "1",
+  1,
+  0
+)
 
 ################################################################################
 ## Data Prep- Lanscape-Scale Covs
@@ -289,7 +295,7 @@ write.csv(nest.sites, "Data Management/Csvs/Processed/Covariates/Pennsylvania/We
 w <- download_daymet_batch(
   file_location = 'Data Management/Csvs/Processed/Covariates/Pennsylvania/Weather/nests.sites.updated.csv',
   start = 2022,
-  end = 2024,
+  end = 2023,
   internal = TRUE
 )
 

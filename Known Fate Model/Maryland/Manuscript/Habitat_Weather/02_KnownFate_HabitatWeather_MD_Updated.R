@@ -1,15 +1,15 @@
 #---
-# title: Daily Nest Survival Modeling of Wild Turkeys in the Mid-Atlantic Region
-# authors: "K. Smelter
+# title: Daily Nest Survival Modeling of Female Wild Turkeys in Maryland
+# authors: K. Smelter
 # date: "`r format(Sys.time(), '%d %B, %Y')`"
 # output:
 #   html_document: 
 #     toc: true
 #---
 #  
-# **Purpose**: This script uses derived incubation start and end dates to fit a Bayesian known fate model 
-# **Key Changes**: This script uses the cloglog link instead of the logit link for modeling daily nest survival
-# **Last Updated**: 9/9/25
+#' **Purpose**: This script uses derived incubation start and end dates to fit a Bayesian known fate model 
+#' **Key Changes**: This script uses the cloglog link instead of the logit link for modeling daily nest survival
+#' **Last Updated**: 12/27/25
 
 
 ################################################################################
@@ -59,6 +59,14 @@ median_2024 <- median(nests.scaled$startI[nests.scaled$NestYr == 2024], na.rm = 
 # Print results
 median_2023
 median_2024
+
+# Calculate average number of nesting attempts per BandID
+avg_attempts <- nests.scaled %>%
+  group_by(BandID) %>%
+  summarise(n_attempts = n_distinct(NestID1, na.rm = TRUE)) %>%
+  summarise(mean_attempts = mean(n_attempts, na.rm = TRUE))
+
+avg_attempts
 
 ################################################################################
 ## Data Prep- Encounter Histories
@@ -150,6 +158,14 @@ testTempC3Roll[1,1:90]
 testPrecip3Roll[1,1:90]
 range(testPrecip3Roll, na.rm = T) 
 range(testTempC3Roll, na.rm = T)
+mean(unlist(testTempC3Roll), na.rm = TRUE)
+mean(unlist(testPrecip3Roll), na.rm = TRUE)
+quantile(unlist(testPrecip3Roll), probs = seq(0,1,0.1), na.rm = TRUE)
+
+sd(unlist(testTempC3Roll), na.rm = TRUE)
+sd(unlist(testPrecip3Roll), na.rm = TRUE)
+
+(0-2.89)/4.09
 
 
 # Scale weather data
@@ -487,16 +503,26 @@ library(ggplot2)
 library(tidyverse)
 library(nimble)
 
+# Obtain means, sds of weather variables for back transforming 
+mean(unlist(testTempC3Roll), na.rm = TRUE)
+mean(unlist(testPrecip3Roll), na.rm = TRUE)
+sd(unlist(testTempC3Roll), na.rm = TRUE)
+sd(unlist(testPrecip3Roll), na.rm = TRUE)
+
 # Define standardized temp values
 temp_vals <- seq(-2, 2, length.out = 100)
 
 # Define low, medium, high standardized precipitation levels
-precip_vals <- c(-2, 0, 2)
+# Back-transform: standardized value * sd + mean
+quantile(unlist(testPrecip3Roll), probs = seq(0,1,0.1), na.rm = TRUE)
+quantile(unlist(testPrecip3Roll), probs = seq(0,1,0.05), na.rm = TRUE)
+precip_vals <- c(-0.7066015, 0, 0.3202135) # 0mm, 2.88mm, 4.1991667 (0-35%, mean, 75% percentile)
 
 # Posterior samples
 beta_temp <- samples_df$`Minimum Temperature`
 beta_precip <- samples_df$`Precipitation`
 beta_inter <- samples_df$`Precipitation * Minimum Temperature`
+inter <- samples_df$Intercept
 
 # Container for predictions
 prediction_list <- list()
@@ -504,11 +530,12 @@ prediction_list <- list()
 # Loop over each fixed precip level
 for (p in precip_vals) {
   for (t in temp_vals) {
-    lp <- beta_temp * t + beta_precip * p + beta_inter * t * p
+    lp <- inter + beta_temp * t + beta_precip * p + beta_inter * t * p
     phi <- icloglog(lp)
     
     prediction_list[[length(prediction_list) + 1]] <- data.frame(
-      temp = t,
+      tempscaled = t,
+      temp = (t*4.68)+12.83,
       precip = p,
       phi_mean = mean(phi),
       phi_lower = quantile(phi, 0.05),
@@ -520,15 +547,14 @@ for (p in precip_vals) {
 # Combine predictions and label precip levels
 pred_df <- do.call(rbind, prediction_list)
 pred_df$precip <- factor(pred_df$precip,
-                         levels = c(-2, 0, 2),
+                         levels = precip_vals,
                          labels = c("Low Precip", "Medium Precip", "High Precip"))
-
 
 ggplot(pred_df, aes(x = temp, y = phi_mean, color = precip, fill = precip, group = precip)) +
   geom_line(size = 1.2) +
   geom_ribbon(aes(ymin = phi_lower, ymax = phi_upper), alpha = 0.25, color = NA) +
   labs(
-    x = "Minimum Temperature",
+    x = "Minimum Temperature (°C)",
     y = "Predicted daily nest survival probability",
     color = "Precipitation Level",
     fill = "Precipitation Level"

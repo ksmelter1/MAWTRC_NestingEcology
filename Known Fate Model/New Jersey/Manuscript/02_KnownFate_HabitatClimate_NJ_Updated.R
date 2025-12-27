@@ -1,16 +1,11 @@
 #'---
-#' title: Daily Nest Survival Modeling of Wild Turkeys in the Mid-Atlantic Region
-#' authors: "K. Smelter, F. Buderman"
+#' title: Daily Nest Survival Modeling of Female Wild Turkeys in New Jersey
+#' authors: K. Smelter
 #' date: "`r format(Sys.time(), '%d %B, %Y')`"
-#' output:
-#'   html_document: 
-#'     toc: true
-#'---
-#'  
 #' **Purpose**: This script uses derived incubation start and end dates to fit a Bayesian known fate model 
 #' **Key Changes**: This script uses the cloglog link instead of the logit link for modeling daily nest survival
-#' **Last Updated**: 2/19/25
-
+#' **Last Updated**: 12/27/25
+#'---
 
 ################################################################################
 ## Load Packages
@@ -392,3 +387,6 @@ save(p2.betas,
      samples_df,
      mean_estimates,
      file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Known Fate/kf.betas.habitat.nj.updated.RData", overwrite = T)
+
+################################################################################
+###############################################################################X

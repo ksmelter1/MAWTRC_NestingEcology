@@ -1,14 +1,14 @@
 #---
-# title: Nest Success Modeling of Wild Turkeys in the Mid-Atlantic Region
-# authors: "K. Smelter
+# title: Daily Nest Survival Modeling of Female Wild Turkeys in Maryland
+# authors: K. Smelter
 # date: "`r format(Sys.time(), '%d %B, %Y')`"
 # output:
 #   html_document: 
 #     toc: true
 #---
 #  
-# **Purpose**: This script prepares data for the Habitat and Climate Known Fate Model for Maryland
-# **Note**: We are still waiting on 2024 weather data for Maryland and New Jersey.This will come in the update
+#' **Purpose**: This script prepares data for the Habitat and Climate Known Fate Model for Maryland
+#' **Last Updated**: 12/27/25
 
 
 ################################################################################
@@ -321,3 +321,5 @@ weather.array.copy[14,,1]
 # Check the first few rows of the 2024 data (should be stored in 366-730)
 print(weather.array.copy[14,,2])  # Tmin for both 2023 and 20245print(weather.array[102,,2])  # Precipitation for both 2023 and 2024
 
+################################################################################
+###############################################################################X

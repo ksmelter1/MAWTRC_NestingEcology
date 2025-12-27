@@ -1,15 +1,15 @@
 #---
 # title: Daily Nest Survival Modeling of Wild Turkeys in the Mid-Atlantic Region
-# authors: "K. Smelter
+# authors: K. Smelter
 # date: "`r format(Sys.time(), '%d %B, %Y')`"
 # output:
 #   html_document: 
 #     toc: true
 #---
 #  
-# **Purpose**: This script uses derived incubation start and end dates to fit a Bayesian known fate model 
-# **Key Changes**: This script incorporates 2024 data into the Pennsylvania known fate model as requested by the PGC
-# **Last Updated**: 7/17/25
+#' **Purpose**: This script uses derived incubation start and end dates to fit a Bayesian known fate model 
+#' **Key Changes**: This script incorporates 2024 data into the Pennsylvania known fate model as requested by the PGC
+#' **Last Updated**: 12/27/25
 
 ################################################################################
 ## Load Packages
@@ -63,6 +63,15 @@ median_2024 <- median(nests.scaled$startI[nests.scaled$NestYr == 2024], na.rm = 
 median_2022
 median_2023
 median_2024
+
+# Calculate average number of nesting attempts per BandID
+avg_attempts <- nests.scaled %>%
+  group_by(BandID) %>%
+  summarise(n_attempts = n_distinct(NestID, na.rm = TRUE)) %>%
+  summarise(mean_attempts = mean(n_attempts, na.rm = TRUE))
+
+avg_attempts
+
 
 ################################################################################
 ## Data Prep- Encounter Histories

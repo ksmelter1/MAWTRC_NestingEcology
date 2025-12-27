@@ -1,14 +1,11 @@
-#---
-# title: Nest Success Modeling of Wild Turkeys in the Mid-Atlantic Region
-# authors: "K. Smelter, F. Buderman"
-# date: "`r format(Sys.time(), '%d %B, %Y')`"
-# output:
-#   html_document: 
-#     toc: true
-#---
-#  
-# **Purpose**: This script uses simulated data to fit a Bayesian known fate model for female wild turkeys in our study
-# **Key Changes**: This script uses the cloglog link instead of the logit link for modeling daily nest survival
+#'---
+#' title: Daily Nest Survival Modeling of Female Wild Turkeys in New Jersey
+#' authors: K. Smelter
+#' date: "`r format(Sys.time(), '%d %B, %Y')`"
+#' **Purpose**: This script prepares data for the New Jersey known fate model
+#' **Key Changes**: This script uses the cloglog link instead of the logit link for modeling daily nest survival
+#' **Last Updated**: 12/27/25
+#'---
 
 ################################################################################
 ## Load Packages
@@ -107,6 +104,13 @@ glimpse(nests.scaled)
 nests.scaled <- nests.scaled %>%
   dplyr::mutate("Nest Incubation Date" = scale(lubridate::yday(startI))) 
 nests.scaled$`Nest Incubation Date` <- as.numeric(nests.scaled$`Nest Incubation Date`)
+
+# Create Renest variable
+nests.scaled$Renest <- ifelse(
+  substr(nests.scaled$NestID, nchar(nests.scaled$NestID), nchar(nests.scaled$NestID)) != "1",
+  1,
+  0
+)
 
 
 ################################################################################
@@ -270,3 +274,6 @@ print(weather.array.copy[10,,2])  # Tmin for both 2023 and 20245print(weather.ar
 
 #saveRDS(nests.scaled, "nests.scaled.RDS")
 #saveRDS(weather.array, "weather.RDS")
+
+################################################################################
+###############################################################################X
