@@ -27,7 +27,7 @@ load_packages <- function(package_name) {
 lapply(packages, load_packages)
 
 # Read in named samples from Pennsylvania pre-nesting movement model
-samples_df <- readRDS("Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/Model Results/20250513_samples_df.RDS")
+samples_df <- readRDS("Data Management/RData/Pre-Nesting Movement Model/Pennsylvania/Model Results/PAPreNestSamples.RDS")
 
 
 ################################################################################
@@ -116,7 +116,7 @@ p2.betas
 save(p2.betas, 
      mean_estimates1,
      samples_df,
-     file = "MAWTRC Nesting Ecology Manuscript/Figures/RData/Pre-Nesting Movement/pre.pa.betas.updated.RData", 
+     file = "MAWTRC Nesting Ecology Manuscript/Figure Code and Data/RData/Pre-Nesting Movement/pre.pa.betas.updated.RData", 
      overwrite = T)
 
 
