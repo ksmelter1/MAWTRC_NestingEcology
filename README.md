@@ -1,6 +1,6 @@
 Multi-Level Modelling of Wild Turkey Nesting Behavior and Reproductive Success in The Mid-Atlantic Region
 
-Authors
+Author
 Kyle J. Smelter, Department of Ecosystem Science and Management, Pennsylvania State University, University Park, Pennsylvania, USA
 
 Point of contact:
